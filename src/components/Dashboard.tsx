@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useMemo, useState } from 'react';
 import { 
   TrendingUp, 
@@ -18,7 +13,8 @@ import {
   ShieldAlert,
   Layers,
   ChevronRight,
-  Sparkles
+  Sliders,
+  Calendar
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -28,7 +24,12 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  Legend 
+  Legend,
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis
 } from 'recharts';
 import { Task, Transaction, Risk } from '../types';
 
@@ -37,47 +38,55 @@ interface DashboardProps {
   transactions: Transaction[];
   risks: Risk[];
   currentDate: string;
+  setCurrentDate?: (date: string) => void;
 }
 
-export default function Dashboard({ tasks, transactions, risks, currentDate }: DashboardProps) {
-  const [hoveredWheelParam, setHoveredWheelParam] = useState<string | null>(null);
+export default function Dashboard({ tasks, transactions, risks, currentDate, setCurrentDate }: DashboardProps) {
   const [selectedSeason, setSelectedSeason] = useState<'comparativo' | 'mach2' | 'mach1'>('comparativo');
+  const [showTimelineSlider, setShowTimelineSlider] = useState(false);
+  const [hoveredWheelParam, setHoveredWheelParam] = useState<string | null>(null);
 
-  // Realistic Mach Wheel comparative telemetry data
+  // High-performance Project Management PM metrics for Mach Wheel
   const wheelParams = useMemo(() => [
-    { name: 'Potência do Motor (HP)', mach1: 76, mach2: 84, unit: 'hp', desc: 'Melhoria no mapa de injeção e coletores impressos em 3D' },
-    { name: 'Peso Total (kg)', mach1: 220, mach2: 198, unit: 'kg', desc: 'Alívio de peso com braços de suspensão em fibra de carbono' },
-    { name: 'Arrasto Aerodinâmico', mach1: 0.95, mach2: 0.82, unit: 'Cd', desc: 'Dutos S-Duct no bico e asa de triplo elemento otimizada' },
-    { name: 'Downforce (N @ 80km/h)', mach1: 450, mach2: 580, unit: 'N', desc: 'Asa traseira redesenhada e extrator com efeito solo' },
-    { name: 'Aderência Lateral (G)', mach1: 1.6, mach2: 1.85, unit: 'G', desc: 'Geometria de suspensão anti-squat e novos slicks' },
+    { name: 'Engenharia', mach1: 75, mach2: 88, unit: '%', desc: 'Aprovação de simulações de fadiga FEA, tolerâncias de usinagem e CFD dinâmico.' },
+    { name: 'Gestão de Projeto', mach1: 80, mach2: 92, unit: '%', desc: 'Aderência a prazos da EAP, atualização de status e ritmo geral de produtividade.' },
+    { name: 'Financeiro', mach1: 70, mach2: 85, unit: '%', desc: 'Controle orçamentário CPI e captação ativa de recursos de patrocinadores federais.' },
+    { name: 'Social', mach1: 65, mach2: 80, unit: '%', desc: 'Atração de público, mídias estruturadas em STEM Racing e engajamento comunitário.' },
+    { name: 'Pit Display', mach1: 72, mach2: 90, unit: '%', desc: 'Ergonomia de box, atendimento corporativo e conformidade técnica dos juízes.' },
+    { name: 'Apresentação Verbal', mach1: 78, mach2: 91, unit: '%', desc: 'Pitch de plano de negócios para investidores simulados da F1.' },
   ], []);
+
+  // Format dataset for recharts Radar chart
+  const radarData = useMemo(() => {
+    return wheelParams.map(param => ({
+      subject: param.name,
+      'Temporada Atual (2026)': param.mach2,
+      'Temporada Anterior (2025)': param.mach1,
+      fullMark: 100,
+    }));
+  }, [wheelParams]);
 
   // 1. CALCULATE REAL-TIME EVM METRICS
   const evm = useMemo(() => {
-    // BAC: Budget at Completion = total planned cost of tasks
     const BAC = tasks.reduce((sum, t) => sum + t.plannedCost, 0);
 
-    // AC: Actual Cost = sum of expenses paid (type "despesa")
     const AC = transactions
-      .filter(tr => tr.type === 'despesa') // All expenses
+      .filter(tr => tr.type === 'despesa')
       .reduce((sum, tr) => sum + tr.amount, 0);
 
-    // EV: Earned Value = sum of (plannedCost * progress / 100)
     const EV = tasks.reduce((sum, t) => sum + (t.plannedCost * (t.progress / 100)), 0);
 
-    // PV: Planned Value = calculated based on currentDate relative to start/end dates
     const PV = tasks.reduce((sum, t) => {
       const start = new Date(t.startDate).getTime();
       const end = new Date(t.endDate).getTime();
       const current = new Date(currentDate).getTime();
 
       if (current >= end) {
-        return sum + t.plannedCost; // Should be fully done
+        return sum + t.plannedCost;
       } else if (current < start) {
-        return sum + 0; // Not scheduled to begin yet
+        return sum + 0;
       } else {
-        // Linear schedule value progress
-        const totalDuration = Math.max(end - start, 86400000); // at least 1 day
+        const totalDuration = Math.max(end - start, 86400000);
         const elapsed = current - start;
         return sum + t.plannedCost * (elapsed / totalDuration);
       }
@@ -100,7 +109,7 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
     };
   }, [tasks, transactions, currentDate]);
 
-  // Generates S-Curve data points sequentially for charting the cumulative values
+  // Generates S-Curve data points sequentially
   const evmHistoryData = useMemo(() => {
     const sortedTasks = [...tasks].sort((a, b) => a.startDate.localeCompare(b.startDate));
     if (sortedTasks.length === 0) return [];
@@ -121,12 +130,10 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
       const targetDate = new Date(targetTime);
       const targetDateStr = targetDate.toISOString().split('T')[0];
 
-      // Calculate cumulative values for this point in time
       let ptPV = 0;
       let ptEV = 0;
       let ptAC = 0;
 
-      // Cumulative PV on that date
       tasks.forEach(t => {
         const tStart = new Date(t.startDate).getTime();
         const tEnd = new Date(t.endDate).getTime();
@@ -139,29 +146,24 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
         }
       });
 
-      // Cumulative EV on that date (estimated historical build-up based on current status)
       tasks.forEach(t => {
         const tEnd = new Date(t.endDate).getTime();
         const tStart = new Date(t.startDate).getTime();
-        // If date is past end, progress is assumed earned if currently complete
         if (targetTime >= tEnd) {
           ptEV += t.plannedCost * (t.progress / 100);
         } else if (targetTime > tStart) {
-          // linear interpolation of progress up to the point
           ptEV += t.plannedCost * (t.progress / 100) * ((targetTime - tStart) / (tEnd - tStart));
         }
       });
 
-      // Cumulative AC on that date (sum transactions with dates before or equal)
       transactions.forEach(tr => {
         if (tr.type === 'despesa' && tr.date <= targetDateStr) {
           ptAC += tr.amount;
         }
       });
 
-      // Bound values in reasonable limits
       data.push({
-        name: `Seq ${i}`,
+        name: `Etapa ${i}`,
         dataStr: targetDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }),
         'VA (Valor Agregado - EV)': Math.round(ptEV),
         'VP (Valor Planejado - PV)': Math.round(ptPV),
@@ -172,12 +174,11 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
     return data;
   }, [tasks, transactions]);
 
-  // 2. DETECT SCOPE DEVIATIONS & HEALTH STATUS
+  // 2. DETECT SCOPE DEVIATIONS
   const scopeAlerts = useMemo(() => {
     const alerts: { id: string; type: 'critical' | 'warning'; msg: string; taskName?: string }[] = [];
-
-    // Critical: Task behind schedule
     const todayMs = new Date(currentDate).getTime();
+
     tasks.forEach(t => {
       const endMs = new Date(t.endDate).getTime();
       if (t.progress < 100 && todayMs > endMs) {
@@ -197,7 +198,6 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
       }
     });
 
-    // Cost Deviation Alert
     if (evm.CPI < 0.9 && evm.AC > 0) {
       alerts.push({
         id: 'cpi-alert',
@@ -208,16 +208,15 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
       alerts.push({
         id: 'cpi-warn',
         type: 'warning',
-        msg: `Sinalização de desvio financeiro: Custo Real superando as margens seguras.`
+        msg: `Sinalização de desvio financeiro: Custo Real superando as margens de contingência seguras.`
       });
     }
 
-    // Schedule Deviation Alert
     if (evm.SPI < 0.85) {
       alerts.push({
         id: 'spi-alert',
         type: 'critical',
-        msg: `SPI Crítico (${evm.SPI.toFixed(2)}): Atraso de cronograma geral. O ritmo de entregas está abaixo de 85% do planejado.`
+        msg: `SPI Crítico (${evm.SPI.toFixed(2)}): Ritmo de cronograma comprometido. Taxa abaixo de 85% do planejado.`
       });
     }
 
@@ -232,114 +231,155 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
   }, [risks]);
 
   return (
-    <div className="space-y-6">
-      {/* HEADER BAR */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden shadow-xl" id="dash-header">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-tr from-pink-500/10 to-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div className="space-y-6" id="mach-dashboard-view">
+      
+      {/* HEADER HERO AREA - CLEAN LIGHT/DARK CARD */}
+      <div className="mach-card md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden" id="dash-header">
         <div>
-          <div className="flex items-center gap-2 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-indigo-400 font-mono text-xs tracking-wider uppercase">
-            <Sparkles className="w-3.5 h-3.5 animate-pulse text-pink-400" />
-            Operações do Projeto FSAE — Temporada 2026
-          </div>
-          <h1 className="text-3xl font-sans font-bold text-white tracking-tight mt-1">
-            Mach Control <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-400 italic">Suite</span>
+          <span className="font-mono text-xs uppercase text-[#DC2626] font-bold select-none tracking-wide">
+            Operações do Projeto • Tempos e Indicadores Integrados
+          </span>
+          <h1 className="text-xl font-display font-bold text-stone-900 dark:text-stone-50 tracking-tight mt-1">
+            Painel Central Mach Control
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Integração das métricas de engenharia automotiva, finanças e cronograma físico do veículo.
+          <p className="text-xs text-stone-500 max-w-2xl mt-1">
+            Análise em tempo real de Valor Agregado (EVM), curva em S físico-financeira e índice de prontidão técnica da Equipe Mach One.
           </p>
         </div>
-        <div className="bg-slate-800/80 border border-slate-700/50 backdrop-blur rounded-xl px-4 py-2 flex flex-col items-end shadow-sm">
-          <div className="text-xs text-indigo-300 font-mono">DATA DE CONTROLE DE HOJE</div>
-          <div className="text-md font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-indigo-400">
-            {new Date(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto shrink-0">
+          {setCurrentDate && (
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="toggle-slider-opt"
+                checked={showTimelineSlider}
+                onChange={e => setShowTimelineSlider(e.target.checked)}
+                className="rounded border-stone-300 dark:border-stone-800 text-[#DC2626] focus:ring-[#DC2626]"
+              />
+              <label htmlFor="toggle-slider-opt" className="text-xs font-mono text-stone-500 font-semibold cursor-pointer select-none">
+                TIMELINE DINÂMICA
+              </label>
+            </div>
+          )}
+
+          <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-lg px-3 py-1.5 flex flex-col items-end select-none">
+            <span className="text-[9px] text-stone-400 font-mono font-bold uppercase">Hoje de Controle</span>
+            <span className="text-xs font-mono font-bold text-stone-800 dark:text-stone-200 mt-0.5">
+              {new Date(currentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
           </div>
         </div>
       </div>
 
+      {/* OPTIONAL TIMELINE SLIDER CONTROL PANEL */}
+      {showTimelineSlider && setCurrentDate && (
+        <div className="mach-card bg-stone-50 dark:bg-stone-900/40 p-4 border border-stone-200 dark:border-stone-850 space-y-2 select-none">
+          <div className="flex justify-between text-xs text-stone-500 font-mono font-bold">
+            <span className="flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-[#DC2626]" /> 
+              CONTROLE TIMELINE DE SIMULAÇÃO:
+            </span>
+            <span className="text-xs text-[#DC2626]">{currentDate}</span>
+          </div>
+          <input 
+            type="range" 
+            min="17625"
+            max="18100" 
+            value={new Date(currentDate).getTime() / 86400000 - 2900} 
+            onChange={(e) => {
+              const daysFromBase = Number(e.target.value) + 2900;
+              const dateMs = daysFromBase * 86400000;
+              const dateStr = new Date(dateMs).toISOString().split('T')[0];
+              setCurrentDate(dateStr);
+            }}
+            className="w-full h-1 bg-stone-200 dark:bg-stone-800 rounded-lg appearance-none cursor-pointer accent-[#DC2626]"
+          />
+          <div className="flex justify-between text-[10px] text-stone-400 font-mono">
+            <span>Inicio da Temporada (Jan 26)</span>
+            <span>Final da Temporada (Dez 26)</span>
+          </div>
+        </div>
+      )}
+
       {/* METRICS ROW (EVM CARDS) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4" id="evm-metrics-grid">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-pink-500/40 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-pink-500 transition-all shadow-md">
+        {/* Card 1 */}
+        <div className="mach-card hover:border-[#DC2626]/40 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            <span className="text-slate-400 font-mono text-[11px]">BAC (Orçamento Base)</span>
-            <span className="p-1.5 rounded-lg bg-pink-500/10 text-pink-400">
-              <DollarSign className="w-4 h-4" />
+            <span className="text-stone-500 font-mono text-[11px] font-bold">BAC (Orçamento Total)</span>
+            <span className="p-1 rounded bg-[#DC2626]/10 text-[#DC2626]">
+              <DollarSign className="w-3.5 h-3.5" />
             </span>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-mono font-bold text-white">
+          <div className="mt-2">
+            <div className="text-lg font-mono font-bold text-stone-900 dark:text-stone-100">
               {evm.BAC.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Custo total planejado</p>
+            <p className="text-[10px] text-stone-400 font-sans mt-0.5">Base orçamentária EAP</p>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-indigo-500/40 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-indigo-500 transition-all shadow-md">
+        {/* Card 2 */}
+        <div className="mach-card hover:border-slate-400 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            <span className="text-slate-400 font-mono text-[11px]">VP (Valor Planejado)</span>
-            <span className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400">
-              <Layers className="w-4 h-4" />
+            <span className="text-stone-500 font-mono text-[11px] font-bold">PV (Valor Planejado)</span>
+            <span className="p-1 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+              <Layers className="w-3.5 h-3.5" />
             </span>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-mono font-bold text-indigo-400">
+          <div className="mt-2">
+            <div className="text-lg font-mono font-bold text-stone-800 dark:text-stone-200">
               {evm.PV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Meta física para hoje</p>
+            <p className="text-[10px] text-stone-400 font-sans mt-0.5">Meta planejada para hoje</p>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-cyan-500/40 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-cyan-400 transition-all shadow-md">
+        {/* Card 3 */}
+        <div className="mach-card hover:border-slate-400 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            <span className="text-slate-400 font-mono text-[11px]">VA (Valor Agregado)</span>
-            <span className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400">
-              <Target className="w-4 h-4" />
+            <span className="text-stone-500 font-mono text-[11px] font-bold">EV (Valor Agregado)</span>
+            <span className="p-1 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+              <Target className="w-3.5 h-3.5" />
             </span>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-mono font-bold text-cyan-400">
+          <div className="mt-2">
+            <div className="text-lg font-mono font-bold text-stone-800 dark:text-stone-200">
               {evm.EV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Volume de trabalho concluído</p>
+            <p className="text-[10px] text-stone-400 font-sans mt-0.5">Meta física entregue real</p>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between hover:border-pink-500/40 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-pink-400 transition-all shadow-md">
+        {/* Card 4 */}
+        <div className="mach-card hover:border-slate-400 flex flex-col justify-between">
           <div className="flex justify-between items-start">
-            <span className="text-slate-400 font-mono text-[11px]">CR (Custo Real)</span>
-            <span className="p-1.5 rounded-lg bg-pink-500/10 text-pink-400">
-              <TrendingUp className="w-4 h-4" />
+            <span className="text-stone-500 font-mono text-[11px] font-bold">AC (Custo Real)</span>
+            <span className="p-1 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
+              <TrendingUp className="w-3.5 h-3.5" />
             </span>
           </div>
-          <div className="mt-4">
-            <div className="text-2xl font-mono font-bold text-pink-400">
+          <div className="mt-2">
+            <div className="text-lg font-mono font-bold text-stone-800 dark:text-stone-200">
               {evm.AC.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </div>
-            <p className="text-xs text-slate-500 mt-1">Total de saídas financeiras</p>
+            <p className="text-[10px] text-stone-400 font-sans mt-0.5">Saídas totais acumuladas</p>
           </div>
         </div>
 
-        <div className="col-span-2 lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-4 grid grid-cols-2 gap-2 shadow-md hover:border-indigo-500/40 relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-indigo-400 transition-all">
-          {/* CPI */}
-          <div className="bg-slate-950/80 rounded-lg p-2 flex flex-col justify-center border border-slate-800/50">
-            <span className="text-slate-500 font-mono text-[10px] uppercase">CPI (Custos)</span>
-            <div className={`text-lg font-mono font-bold mt-1 flex items-center gap-1 ${evm.CPI >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>
+        {/* Card 5 (CPI vs SPI Panel) */}
+        <div className="col-span-2 lg:col-span-1 border border-stone-200 dark:border-stone-850 rounded-lg p-2.5 grid grid-cols-2 gap-2 bg-stone-50 dark:bg-[#121212]/80">
+          <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800/80 rounded p-1.5 text-center flex flex-col justify-center">
+            <span className="text-stone-450 font-mono text-[9px] uppercase font-bold">CPI (Custos)</span>
+            <span className={`text-sm font-mono font-bold mt-0.5 ${evm.CPI >= 0.95 ? 'text-emerald-600' : 'text-rose-600'}`}>
               {evm.CPI.toFixed(2)}
-              {evm.CPI >= 1 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-            </div>
-            <span className={`text-[9px] font-mono ${evm.CPI >= 1 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}>
-              {evm.CPI >= 1 ? 'Sob orçamento' : 'Estouro'}
             </span>
           </div>
-
-          {/* SPI */}
-          <div className="bg-slate-950/80 rounded-lg p-2 flex flex-col justify-center border border-slate-800/50">
-            <span className="text-slate-500 font-mono text-[10px] uppercase">SPI (Prazo)</span>
-            <div className={`text-lg font-mono font-bold mt-1 flex items-center gap-1 ${evm.SPI >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          <div className="bg-white dark:bg-stone-900 border border-stone-150 dark:border-stone-800/80 rounded p-1.5 text-center flex flex-col justify-center">
+            <span className="text-stone-450 font-mono text-[9px] uppercase font-bold">SPI (Prazo)</span>
+            <span className={`text-sm font-mono font-bold mt-0.5 ${evm.SPI >= 0.95 ? 'text-emerald-600' : 'text-rose-600'}`}>
               {evm.SPI.toFixed(2)}
-              {evm.SPI >= 1 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-            </div>
-            <span className={`text-[9px] font-mono ${evm.SPI >= 1 ? 'text-emerald-500/80' : 'text-rose-500/80'}`}>
-              {evm.SPI >= 1 ? 'Adiantado' : 'Atrasado'}
             </span>
           </div>
         </div>
@@ -348,156 +388,156 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
       {/* CORE S-CURVE AND MACH WHEEL GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="dashboard-graphics">
         {/* S-CURVE CHART */}
-        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
+        <div className="lg:col-span-7 mach-card flex flex-col justify-between">
           <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
               <div>
-                <h2 className="text-lg font-sans font-bold text-white flex items-center gap-2">
-                  <TrendingUp className="text-emerald-400 w-5 h-5" />
-                  Curva em S do Projeto (Análise EVM)
+                <h2 className="text-sm font-bold text-stone-900 dark:text-stone-150 flex items-center gap-2">
+                  <TrendingUp className="text-[#DC2626] w-4.5 h-4.5" />
+                  Curva em S do Projeto (Análise EVM integrada)
                 </h2>
-                <p className="text-xs text-slate-400">Visualização acumulada do progresso e gastos ao longo do tempo</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Tendências do valor planejado (PV) vs físico efetivo entregue (EV) e custo real (AC)</p>
               </div>
-              <div className="flex gap-2 text-xs">
-                <span className="text-slate-400 font-mono border border-slate-800 px-2.5 py-1 rounded-md bg-slate-950">
-                  CV: <span className={evm.CV >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{evm.CV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              <div className="flex gap-2 text-[10px] font-mono select-none">
+                <span className="text-stone-500 border border-stone-200 dark:border-stone-800 px-2 py-0.5 rounded bg-stone-50 dark:bg-stone-900">
+                  CV: <span className={evm.CV >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>{evm.CV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </span>
-                <span className="text-slate-400 font-mono border border-slate-800 px-2.5 py-1 rounded-md bg-slate-950">
-                  SV: <span className={evm.SV >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{evm.SV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <span className="text-stone-500 border border-stone-200 dark:border-stone-800 px-2 py-0.5 rounded bg-stone-50 dark:bg-stone-900">
+                  SV: <span className={evm.SV >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>{evm.SV.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </span>
               </div>
             </div>
 
-            <div className="h-64 mt-2">
+            <div className="h-60 mt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={evmHistoryData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="dataStr" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(v) => `R$${v/1000}k`} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-[#202020]" />
+                  <XAxis dataKey="dataStr" stroke="#78716c" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#78716c" fontSize={10} tickLine={false} tickFormatter={(v) => `R$${v/1000}k`} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }}
-                    labelStyle={{ color: '#94a3b8', fontFamily: 'monospace' }}
-                    itemStyle={{ fontSize: '13px' }}
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: '4px', color: '#1c1917' }}
+                    labelStyle={{ color: '#78716c', fontFamily: 'monospace', fontWeight: 'bold' }}
+                    itemStyle={{ fontSize: '12px' }}
                   />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                  <Line type="monotone" dataKey="VP (Valor Planejado - PV)" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="VA (Valor Agregado - EV)" stroke="#06b6d4" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="CR (Custo Real - AC)" stroke="#ec4899" strokeWidth={2.5} dot={{ r: 3 }} />
+                  <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                  <Line type="monotone" name="VP (Valor Planejado - PV)" dataKey="VP (Valor Planejado - PV)" stroke="#78716c" strokeWidth={1.5} dot={{ r: 2 }} />
+                  <Line type="monotone" name="VA (Valor Agregado - EV)" dataKey="VA (Valor Agregado - EV)" stroke="#DC2626" strokeWidth={2.5} dot={{ r: 3 }} />
+                  <Line type="monotone" name="CR (Custo Real - AC)" dataKey="CR (Custo Real - AC)" stroke="#d97706" strokeWidth={1.5} dot={{ r: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
-          <div className="mt-4 p-3 bg-slate-950/80 rounded-xl border border-slate-800 text-xs flex justify-between items-center text-slate-400 font-mono">
-            <div>📈 Tendência de Entrega Física de Trabalho vs Orçamento real consumido.</div>
-            <div>STATUS: <span className={`font-bold ${evm.CPI >= 0.95 && evm.SPI >= 0.95 ? 'text-pink-400' : 'text-amber-400'}`}>{evm.CPI >= 0.95 && evm.SPI >= 0.95 ? 'ESTÁVEL' : 'VULNERÁVEL'}</span></div>
+          
+          <div className="mt-4 p-2.5 bg-stone-50 dark:bg-stone-900/60 rounded border border-stone-150 dark:border-stone-800/80 text-[11px] flex justify-between items-center text-stone-500 font-mono">
+            <span>📈 Aderência e desvios de escopo acumulados da temporada FSAE.</span>
+            <span>STATUS: <span className={`font-bold ${evm.CPI >= 0.95 && evm.SPI >= 0.95 ? 'text-emerald-600' : 'text-amber-600'}`}>{evm.CPI >= 0.95 && evm.SPI >= 0.95 ? 'CONFORME' : 'ATENÇÃO'}</span></span>
           </div>
         </div>
 
-        {/* INTEGRATED MACH WHEEL DIAL */}
-        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between" id="mach-wheel-card">
+        {/* RADAR CHART - THE REDESIGNED "MACH WHEEL" WITH PM METRICS */}
+        <div className="lg:col-span-5 mach-card flex flex-col justify-between" id="mach-wheel-card">
           <div>
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-3">
               <div>
-                <h2 className="text-lg font-sans font-bold text-white flex items-center gap-2">
-                  <Zap className="text-pink-500 w-5 h-5 animate-pulse" />
-                  Mach Wheel — Análise de Desempenho
+                <h2 className="text-sm font-bold text-stone-900 dark:text-stone-150 flex items-center gap-1.5 leading-none">
+                  <Zap className="text-[#DC2626] w-4.5 h-4.5" />
+                  Mach Wheel — Maturidade em PM
                 </h2>
-                <p className="text-xs text-slate-400">Comparação interativa do protótipo atual (Mach Two) vs anterior (Mach One)</p>
+                <p className="text-[11px] text-stone-400 mt-1">Comparativo de performance em Gestão de Projetos: Temporada Atual vs Anterior</p>
               </div>
             </div>
 
             {/* SELECTION TABS */}
-            <div className="grid grid-cols-3 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-mono mb-4">
+            <div className="grid grid-cols-3 bg-stone-50 dark:bg-stone-950 p-1 rounded border border-stone-200 dark:border-stone-850 text-[10px] font-mono mb-3 select-none">
               <button 
                 onClick={() => setSelectedSeason('comparativo')}
-                className={`py-1.5 rounded transition ${selectedSeason === 'comparativo' ? 'bg-gradient-to-tr from-pink-500 to-indigo-600 text-white font-bold shadow' : 'text-slate-400 hover:text-white'}`}
+                className={`py-1 rounded transition cursor-pointer ${selectedSeason === 'comparativo' ? 'bg-[#DC2626] text-white font-bold' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'}`}
               >
                 Comparativo
               </button>
               <button 
                 onClick={() => setSelectedSeason('mach2')}
-                className={`py-1.5 rounded transition ${selectedSeason === 'mach2' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`py-1 rounded transition cursor-pointer ${selectedSeason === 'mach2' ? 'bg-[#DC2626] text-white font-bold' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'}`}
               >
-                Mach Two (2026)
+                Atual (2026)
               </button>
               <button 
                 onClick={() => setSelectedSeason('mach1')}
-                className={`py-1.5 rounded transition ${selectedSeason === 'mach1' ? 'bg-slate-700 text-white font-bold' : 'text-slate-400 hover:text-white'}`}
+                className={`py-1 rounded transition cursor-pointer ${selectedSeason === 'mach1' ? 'bg-[#DC2626] text-white font-bold' : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'}`}
               >
-                Mach One (2025)
+                Anterior (2025)
               </button>
             </div>
 
-            {/* WHEEL VISUALIZER */}
-            <div className="flex flex-col items-center justify-center p-2 relative">
-              <div className="relative w-44 h-44 flex items-center justify-center bg-slate-950 rounded-full border-4 border-slate-800 shadow-inner">
-                {/* Visual wheel spinning rings on background */}
-                <div className="absolute inset-2 rounded-full border border-dashed border-pink-500/20 animate-spin" style={{ animationDuration: '40s' }}></div>
-                <div className="absolute inset-6 rounded-full border border-dashed border-indigo-500/20 animate-spin" style={{ animationDuration: '20s', animationDirection: 'reverse' }}></div>
-                
-                {/* Absolute status pointer or inner circle */}
-                <div className="z-10 text-center">
-                  <div className="text-[10px] font-mono text-slate-500 uppercase">PRODUTIVIDADE</div>
-                  <div className="text-3xl font-mono font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-indigo-400 tracking-tight">
-                    {Math.round(evm.SPI * 100)}%
-                  </div>
-                  <div className="text-[9px] font-mono text-slate-400 font-semibold">Ritmo de Escopo</div>
-                </div>
-
-                {/* Simulated parameter dots inside the gauge */}
-                {wheelParams.map((p, index) => {
-                  const angle = (index * 360) / wheelParams.length;
-                  const rad = (angle * Math.PI) / 180;
-                  const x = Math.round(50 + 40 * Math.cos(rad));
-                  const y = Math.round(50 + 40 * Math.sin(rad));
-
-                  return (
-                    <div 
-                      key={p.name}
-                      onMouseEnter={() => setHoveredWheelParam(p.name)}
-                      onMouseLeave={() => setHoveredWheelParam(null)}
-                      className="absolute w-3.5 h-3.5 rounded-full cursor-help hover:scale-125 transition-transform flex items-center justify-center bg-slate-900 border border-slate-700 hover:border-pink-400"
-                      style={{ top: `${y}%`, left: `${x}%` }}
-                    >
-                      <span className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-ping"></span>
-                    </div>
-                  );
-                })}
+            {/* RADAR CHART VISUALIZER */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="w-full h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="#e5e7eb" className="dark:stroke-[#202020]" />
+                    <PolarAngleAxis dataKey="subject" stroke="#78716c" fontSize={9} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#a8a29e" fontSize={8} />
+                    
+                    {selectedSeason !== 'mach2' && (
+                      <Radar 
+                        name="Anterior (2025)" 
+                        dataKey="Temporada Anterior (2025)" 
+                        stroke="#a8a29e" 
+                        fill="#78716c" 
+                        fillOpacity={0.15} 
+                      />
+                    )}
+                    {selectedSeason !== 'mach1' && (
+                      <Radar 
+                        name="Atual (2026)" 
+                        dataKey="Temporada Atual (2026)" 
+                        stroke="#DC2626" 
+                        fill="#DC2626" 
+                        fillOpacity={0.25} 
+                      />
+                    )}
+                    <Legend wrapperStyle={{ fontSize: '9px', marginTop: '-5px' }} />
+                  </RadarChart>
+                </ResponsiveContainer>
               </div>
 
-              {/* METER COMPARISON LIST */}
-              <div className="w-full mt-4 space-y-2">
+              {/* METER DETAILED LIST */}
+              <div className="w-full mt-2.5 space-y-1 max-h-44 overflow-y-auto pr-1">
                 {wheelParams.map((param) => {
                   const isHovered = hoveredWheelParam === param.name;
                   return (
                     <div 
                       key={param.name} 
-                      className={`p-2 rounded-lg border transition ${isHovered ? 'bg-slate-950 border-pink-500/40 shadow-inner' : 'bg-slate-950/40 border-slate-800/80'}`}
+                      className={`p-1.5 rounded transition text-xs border ${
+                        isHovered 
+                          ? 'bg-stone-50 dark:bg-stone-900 border-[#DC2626]/30' 
+                          : 'bg-transparent border-transparent'
+                      }`}
                       onMouseEnter={() => setHoveredWheelParam(param.name)}
                       onMouseLeave={() => setHoveredWheelParam(null)}
                     >
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-semibold text-slate-300 flex items-center gap-1">
-                          {isHovered && <span className="w-1.5 h-1.5 rounded-full bg-pink-500"></span>}
+                      <div className="flex justify-between items-center text-[11px]">
+                        <span className="font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1.5">
+                          {isHovered && <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626]"></span>}
                           {param.name}
                         </span>
                         <div className="font-mono flex items-center gap-2">
                           {selectedSeason !== 'mach2' && (
-                            <span className="text-slate-500 line-through text-[11px]">{param.mach1}{param.unit}</span>
+                            <span className="text-stone-400 line-through text-[10px]">{param.mach1}{param.unit}</span>
                           )}
                           {selectedSeason !== 'mach1' && (
-                            <span className="text-pink-400 font-bold text-[13px]">{param.mach2}{param.unit}</span>
+                            <span className="text-[#DC2626] font-bold text-xs">{param.mach2}{param.unit}</span>
                           )}
                           {selectedSeason === 'comparativo' && (
-                            <span className="text-xs text-indigo-400">
+                            <span className="text-[10px] text-emerald-600 font-bold whitespace-nowrap">
                               (+{Math.round(((param.mach2 - param.mach1) / param.mach1) * 100)}%)
                             </span>
                           )}
                         </div>
                       </div>
                       {isHovered && (
-                        <p className="text-[10px] text-slate-400 mt-1 transition-all">
-                          ℹ️ {param.desc}
+                        <p className="text-[10px] text-stone-500 mt-1">
+                          {param.desc}
                         </p>
                       )}
                     </div>
@@ -509,46 +549,46 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
         </div>
       </div>
 
-      {/* LOWER ROW: ALERTS AND CRITICAL RISKS */}
+      {/* LOWER ROW: ALERTS AND CRITICAL THREATS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="alerts-and-risks-section">
         {/* SCOPE DEVIATION ALERTS */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-lg font-sans font-bold text-white flex items-center gap-2 mb-4">
-            <AlertTriangle className="text-orange-400 w-5 h-5" />
-            Alertas de Controle & Desvio de Escopo
+        <div className="mach-card space-y-3">
+          <h2 className="text-sm font-bold text-stone-900 dark:text-stone-150 flex items-center gap-2">
+            <AlertTriangle className="text-amber-500 w-4.5 h-4.5" />
+            Alertas de Controle & Desvios de Escopo
           </h2>
 
-          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {scopeAlerts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-950/30">
-                <span className="p-3 bg-pink-500/10 rounded-full text-pink-400 mb-2">✔️</span>
-                <p className="text-sm">Parâmetros operacionais dentro das margens toleráveis!</p>
-                <p className="text-[11px] text-slate-600 font-mono mt-1">Nenhum desvio físico ou financeiro grave detectado.</p>
+              <div className="flex flex-col items-center justify-center py-8 text-stone-400 border border-dashed border-stone-200 dark:border-stone-850 rounded bg-stone-50 dark:bg-stone-900/10 text-center">
+                <span className="text-emerald-500 font-bold text-lg mb-1 leading-none">✔️</span>
+                <p className="text-xs font-semibold">Parâmetros operacionais em total estabilidade!</p>
+                <p className="text-[10px] text-stone-500 font-mono mt-0.5">Nenhum desvio crítico detectado nas metas.</p>
               </div>
             ) : (
               scopeAlerts.map((alert) => (
                 <div 
                   key={alert.id}
-                  className={`p-3.5 rounded-xl border flex gap-3.5 items-start ${
+                  className={`p-2.5 rounded border text-xs flex gap-2 items-start ${
                     alert.type === 'critical' 
-                      ? 'bg-rose-500/5 border-rose-500/25 text-rose-200' 
-                      : 'bg-amber-500/5 border-amber-500/25 text-amber-200'
+                      ? 'bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-950/40 text-red-700 dark:text-red-300' 
+                      : 'bg-amber-50 dark:bg-amber-950/10 border-amber-250 dark:border-amber-950/40 text-amber-700 dark:text-amber-300'
                   }`}
                 >
-                  <div className="mt-0.5">
+                  <div className="mt-0.5 shrink-0">
                     {alert.type === 'critical' ? (
-                      <AlertCircle className="w-5 h-5 text-rose-500" />
+                      <AlertCircle className="w-4 h-4 text-red-500" />
                     ) : (
-                      <AlertTriangle className="w-5 h-5 text-amber-500" />
+                      <AlertTriangle className="w-4 h-4 text-amber-500" />
                     )}
                   </div>
-                  <div className="flex-1">
+                  <div>
                     {alert.taskName && (
-                      <div className="text-xs font-mono font-bold uppercase tracking-wider mb-0.5 select-none text-slate-400">
+                      <div className="text-[10px] font-mono font-bold uppercase tracking-wide text-stone-400 mb-0.5 select-none">
                         TAREFA: {alert.taskName}
                       </div>
                     )}
-                    <p className="text-sm">{alert.msg}</p>
+                    <p className="font-sans leading-relaxed">{alert.msg}</p>
                   </div>
                 </div>
               ))
@@ -557,46 +597,44 @@ export default function Dashboard({ tasks, transactions, risks, currentDate }: D
         </div>
 
         {/* CRITICAL THREATS & RISKS */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-sans font-bold text-white flex items-center gap-2">
-              <ShieldAlert className="text-rose-500 w-5 h-5" />
-              Resumo de Ameaças Críticas
+        <div className="mach-card space-y-3">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-bold text-stone-900 dark:text-stone-150 flex items-center gap-2">
+              <ShieldAlert className="text-[#DC2626] w-4.5 h-4.5" />
+              Resumo de Ameaças Críticas Ativas
             </h2>
-            <span className="text-[11px] bg-rose-500/10 px-2.5 py-1 rounded-md text-rose-400 border border-rose-500/20 font-mono">
+            <span className="text-[9px] bg-red-50 dark:bg-red-950/30 px-2 py-0.5 rounded text-[#DC2626] border border-red-100 dark:border-red-950 font-mono font-bold select-none">
               SCORE ≥ 12
             </span>
           </div>
 
-          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
             {criticalRisks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-slate-500 border border-dashed border-slate-800 rounded-xl bg-slate-950/30">
-                <span className="p-3 bg-slate-500/10 rounded-full text-slate-400 mb-2">🛡️</span>
-                <p className="text-sm">Nenhuma ameaça qualificada como crítica ativa!</p>
-                <p className="text-[11px] text-slate-600 font-mono mt-1">Monitore o Módulo de Riscos periodicamente.</p>
+              <div className="flex flex-col items-center justify-center py-8 text-stone-400 border border-dashed border-stone-200 dark:border-stone-850 rounded bg-stone-50 dark:bg-stone-900/10 text-center">
+                <span className="text-stone-400 font-bold text-lg mb-1 leading-none">🛡️</span>
+                <p className="text-xs font-semibold">Zelo Operacional: Nenhuma ameaça crítica ativa.</p>
+                <p className="text-[10px] text-stone-500 font-mono mt-0.5">Mantenha a mitigação preventiva sempre atualizada.</p>
               </div>
             ) : (
               criticalRisks.map((risk) => {
                 const score = risk.probability * risk.impact;
                 return (
-                  <div key={risk.id} className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl flex justify-between items-start hover:border-slate-700 transition">
+                  <div key={risk.id} className="p-2.5 bg-stone-50 dark:bg-[#121212] border border-stone-150 dark:border-stone-850 rounded flex justify-between items-start">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white leading-tight">{risk.title}</span>
-                      </div>
-                      <p className="text-xs text-slate-400">
-                        <span className="font-mono text-slate-500">Dono:</span> {risk.ownerName}
+                      <h4 className="text-xs font-bold text-stone-850 dark:text-stone-100 leading-tight">{risk.title}</h4>
+                      <p className="text-[10.5px] text-stone-400 font-sans mt-0.5 leading-none">
+                        Dono da Entrega: <span className="font-semibold text-stone-550">{risk.ownerName}</span>
                       </p>
-                      <div className="text-[11px] text-slate-300 bg-slate-900 p-2 rounded-lg border border-slate-800/60 mt-1">
-                        <span className="font-semibold text-rose-400">Mitigação:</span> {risk.mitigationPlan}
-                      </div>
+                      <p className="text-[10px] text-stone-500 bg-white dark:bg-stone-950 p-1.5 rounded border border-stone-100 dark:border-stone-900/80 mt-1 lines-clamp-2 leading-relaxed">
+                        <span className="font-bold text-[#DC2626]">Mitigação:</span> {risk.mitigationPlan}
+                      </p>
                     </div>
-                    <div className="flex flex-col items-end gap-1 ml-4 shrink-0">
-                      <div className="px-2.5 py-1 text-xs font-mono font-bold rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-center">
+                    <div className="flex flex-col items-end gap-1 ml-4 shrink-0 mt-0.5">
+                      <div className="px-1.5 py-0.5 text-[10px] font-mono font-bold rounded bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-950 text-[#DC2626]">
                         Grau {score}
                       </div>
-                      <span className="text-[9px] font-mono text-slate-500 uppercase">
-                        P:{risk.probability} × I:{risk.impact}
+                      <span className="text-[10px] font-mono text-stone-400 select-none">
+                        P:{risk.probability}×I:{risk.impact}
                       </span>
                     </div>
                   </div>

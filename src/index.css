@@ -1,1 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "system-ui", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-primary: #DC2626; /* Team Mach One Red */
+  --color-primary-hover: #B91C1C;
+}
+
+@layer base {
+  body {
+    @apply transition-colors duration-200;
+  }
+}
+
+/* Custom aesthetic tweaks for pristine clean, breathable cards & buttons */
+.mach-card {
+  @apply bg-white dark:bg-[#121212] border border-[#e5e7eb] dark:border-[#262626] rounded px-5 py-5 transition-shadow duration-150;
+}
+
+.mach-button-primary {
+  @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded bg-[#DC2626] text-white hover:bg-[#B91C1C] focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-[#DC2626] transition-all cursor-pointer select-none;
+}
+
+.mach-button-secondary {
+  @apply inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded bg-stone-50 dark:bg-stone-900/60 border border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-950 focus:outline-none transition-all cursor-pointer select-none;
+}
+
+.mach-label {
+  @apply block text-[10px] font-bold text-stone-400 dark:text-stone-400 select-none mb-1 uppercase tracking-wide;
+}
+
+.mach-input {
+  @apply w-full text-xs rounded bg-white dark:bg-[#151515] border border-stone-200 dark:border-stone-800 p-2.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-[#DC2626] focus:ring-1 focus:ring-[#DC2626] placeholder-stone-400 dark:placeholder-stone-600 transition-colors;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-stone-200 dark:bg-stone-800 rounded-full hover:bg-stone-300 dark:hover:bg-stone-700;
+}

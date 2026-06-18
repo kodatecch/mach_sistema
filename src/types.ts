@@ -29,6 +29,15 @@ export interface Task {
   dependency: string | null; // Task ID
   plannedCost: number; // Planned budget for this task
   assignedTo: string; // TeamMember ID
+  w5h2?: {
+    what: string;
+    why: string;
+    where: string;
+    when: string;
+    who: string;
+    how: string;
+    howMuch: number;
+  };
 }
 
 export interface Transaction {
@@ -105,6 +114,36 @@ export interface PeerReview {
   commitmentMetric: number; // 1-10
   teamworkMetric: number; // 1-10
   comments: string;
+}
+
+export interface ProjectCharter {
+  title: string;
+  objectives: string;
+  justification: string;
+  scopeIn: string;
+  scopeOut: string;
+  assumptions: string;
+  milestones: { description: string; date: string }[];
+}
+
+export interface KickoffMeeting {
+  id: string;
+  title: string;
+  date: string;
+  facilitator: string;
+  summary: string;
+  decisions: string[];
+  actions: { task: string; assignee: string; date: string }[];
+}
+
+export interface TeamHealthCheck {
+  id: string;
+  date: string;
+  trust: number; // 1-5
+  alignment: number; // 1-5
+  speed: number; // 1-5
+  stress: number; // 1-5
+  collaboration: number; // 1-5
 }
 
 // Initial robust seed data reflecting a Formula SAE team
@@ -537,3 +576,44 @@ export const INITIAL_LESSONS_LEARNED: LessonLearned[] = [
     date: '2026-03-02'
   }
 ];
+
+export const INITIAL_CHARTER: ProjectCharter = {
+  title: 'Termo de Abertura do Projeto (TAP) — Protótipo Mach 2026',
+  objectives: 'Projetar, manufaturar e testar um protótipo de STEM Racing do tipo Fórmula SAE de alto desempenho com peso inferior a 195kg, aceleração de 0-100km/h em menos de 4.0 segundos e índice de sustentação aerodinâmica de Cl=2.4.',
+  justification: 'Representar a equipe Mach One nas competições nacionais de STEM Racing, validando as técnicas de manufatura avançada em fibra de carbono desenvolvidas pela Universidade Federal.',
+  scopeIn: 'Projeto mecânico completo (suspensão, chassis monocoque, aerodinâmica, transmissão); Chicote e telemetria básica com aquisição de dados; Laminação e cura do kit de asas e carenagens; Montagem final e 100km de testes dinâmicos.',
+  scopeOut: 'Desenvolvimento de motorização térmica própria (uso de motor comercial Yamaha WR450F); Infraestrutura física de transporte das carretas para o autódromo.',
+  assumptions: 'O laboratório de compósitos estará disponível para laminação a vácuo nas semanas 12 à 15; Os tarugos de alumínio 7075-T6 serão fornecidos em regime de copatrocínio pela Usinagem XYZ.',
+  milestones: [
+    { description: 'Modelagem CAD Congelada', date: '2026-03-01' },
+    { description: 'Início da Manufatura do Monocoque', date: '2026-03-15' },
+    { description: 'Instalação Elétrica & Chicote Mecânico', date: '2026-04-10' },
+    { description: 'Primeiro Roll-out do Carro', date: '2026-05-01' }
+  ]
+};
+
+export const INITIAL_KICKOFF: KickoffMeeting[] = [
+  {
+    id: 'k1',
+    title: 'Reunião de Kickdoc Geral da Temporada Mach 2026',
+    date: '2026-01-08',
+    facilitator: 'João Silva (Capitão)',
+    summary: 'Apresentação das novas metas do regulamento FSAE, distribuição de cargos pelas subequipes e alinhamento do orçamento planejado inicial com nosso patrocinador principal.',
+    decisions: [
+      'Adoção da arquitetura monocoque dividida ao invés de estrutura tubular integral.',
+      'Metodologia ágil com sprints bi-semanais de engenharia.',
+      'Reuniões de acompanhamento todas as segundas-feiras às 18h.'
+    ],
+    actions: [
+      { task: 'Simular primeiros ângulos de caster', assignee: 'm1', date: '2026-01-20' },
+      { task: 'Entrar em contato com distribuidora de tecidos de carbono', assignee: 'm4', date: '2026-01-15' }
+    ]
+  }
+];
+
+export const INITIAL_HEALTH_CHECKS: TeamHealthCheck[] = [
+  { id: 'hc1', date: '2026-05-15', trust: 4, alignment: 4, speed: 3, stress: 4, collaboration: 5 },
+  { id: 'hc2', date: '2026-05-29', trust: 4, alignment: 5, speed: 4, stress: 3, collaboration: 5 },
+  { id: 'hc3', date: '2026-06-12', trust: 5, alignment: 5, speed: 4, stress: 2, collaboration: 5 }
+];
+
