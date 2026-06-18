@@ -1,0 +1,6 @@
+{
+  "name": "Gestão de Projetos FSAE",
+  "description": "Plataforma integrada de gerenciamento de projetos para Equipes de Formula SAE, incluindo análise de EVM, cronograma Gantt, Kanban, orçamento financeiro, análise de risco, mapeamento de stakeholders e desempenho de equipe.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
