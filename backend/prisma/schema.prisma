@@ -1,0 +1,407 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  memberships  ProjectMember[]
+  tasks        Task[]
+
+  @@map("users")
+}
+
+model Organization {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  projects  Project[]
+
+  @@map("organizations")
+}
+
+enum ExecutionRegime {
+  linear
+  fast_tracking
+}
+
+model Project {
+  id              String          @id @default(uuid())
+  organizationId  String          @map("organization_id")
+  name            String
+  startDate       DateTime        @map("start_date")
+  endDate         DateTime        @map("end_date")
+  executionRegime ExecutionRegime @default(linear) @map("execution_regime")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members         ProjectMember[]
+  wbsItems        WbsItem[]
+  tasks           Task[]
+  boardColumns    TaskBoardColumn[]
+  budgetCategories  BudgetCategory[]
+  resourcePlanItems ResourcePlanItem[]
+  budgetLines       BudgetLine[]
+  cashFlowEntries   CashFlowEntry[]
+  reserveFund       ReserveFund?
+  stakeholders          Stakeholder[]
+  communicationMatrices CommunicationMatrix[]
+  communicationLogs     CommunicationLog[]
+  risks                 Risk[]
+  scopeChanges          ScopeChangeLog[]
+  statusReports         StatusReport[]
+  evmSnapshots          EvmSnapshot[]
+
+  @@map("projects")
+}
+
+enum ProjectRole {
+  admin
+  area_lead
+  member
+  mentor
+  sponsor
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String      @map("project_id")
+  userId    String      @map("user_id")
+  role      ProjectRole @default(member)
+  area      String?     @map("area")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model WbsItem {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  parentId    String?   @map("parent_id")
+  code        String
+  name        String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent      WbsItem?  @relation("WbsHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    WbsItem[] @relation("WbsHierarchy")
+  tasks       Task[]
+
+  @@map("wbs_items")
+}
+
+model Task {
+  id                 String           @id @default(uuid())
+  projectId          String           @map("project_id")
+  wbsItemId          String?          @map("wbs_item_id")
+  name               String
+  description        String?
+  status             String           @default("todo")
+  startDate          DateTime?        @map("start_date")
+  endDate            DateTime?        @map("end_date")
+  
+  // 5W2H fields
+  what               String?          @map("what")
+  why                String?          @map("why")
+  where              String?          @map("where")
+  whenDate           String?          @map("when_date")
+  whoOwnerId         String?          @map("who_owner_id")
+  how                String?          @map("how")
+  howMuch            Float?           @map("how_much")
+
+  // PERT fields
+  durationOptimistic Float?           @map("duration_optimistic")
+  durationLikely     Float?           @map("duration_likely")
+  durationPessimistic Float?          @map("duration_pessimistic")
+  durationExpected   Float?           @map("duration_expected")
+
+  isCritical         Boolean?         @default(false) @map("is_critical")
+  totalFloat         Float?           @map("total_float")
+  comment            String?          @db.Text
+
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  project            Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  wbsItem            WbsItem?         @relation(fields: [wbsItemId], references: [id], onDelete: SetNull)
+  owner              User?            @relation(fields: [whoOwnerId], references: [id], onDelete: SetNull)
+  
+  dependencies       TaskDependency[] @relation("TaskSuccessor")
+  dependents         TaskDependency[] @relation("TaskPredecessor")
+
+  @@map("tasks")
+}
+
+model TaskDependency {
+  id              String   @id @default(uuid())
+  taskId          String   @map("task_id")
+  dependsOnTaskId String   @map("depends_on_task_id")
+  type            String   @default("FS") @map("type") // e.g., FS, SS, FF, SF
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  task            Task     @relation("TaskSuccessor", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTask   Task     @relation("TaskPredecessor", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnTaskId])
+  @@map("task_dependencies")
+}
+
+model TaskBoardColumn {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String
+  color     String?
+  position  Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("task_board_columns")
+}
+
+model BudgetCategory {
+  id          String          @id @default(uuid())
+  projectId   String          @map("project_id")
+  name        String
+  description String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  budgetLines BudgetLine[]
+  cashFlows   CashFlowEntry[]
+
+  @@map("budget_categories")
+}
+
+model ResourcePlanItem {
+  id          String      @id @default(uuid())
+  projectId   String      @map("project_id")
+  name        String
+  description String?
+  quantity    Float       @default(1)
+  unit        String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  quotations  Quotation[]
+
+  @@map("resource_plan_items")
+}
+
+model Quotation {
+  id                 String           @id @default(uuid())
+  resourcePlanItemId String           @map("resource_plan_item_id")
+  supplier           String
+  value              Float
+  isSelected         Boolean          @default(false) @map("is_selected")
+  notes              String?
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  resourcePlanItem   ResourcePlanItem @relation(fields: [resourcePlanItemId], references: [id], onDelete: Cascade)
+
+  @@map("quotations")
+}
+
+model BudgetLine {
+  id               String         @id @default(uuid())
+  projectId        String         @map("project_id")
+  budgetCategoryId String         @map("budget_category_id")
+  name             String
+  quantity         Float          @default(1)
+  unitValue        Float          @map("unit_value")
+  totalValue       Float          @map("total_value")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  budgetCategory   BudgetCategory @relation(fields: [budgetCategoryId], references: [id], onDelete: Cascade)
+
+  @@map("budget_lines")
+}
+
+model CashFlowEntry {
+  id               String         @id @default(uuid())
+  projectId        String         @map("project_id")
+  budgetCategoryId String?        @map("budget_category_id")
+  description      String
+  type             String
+  amount           Float
+  date             DateTime       @default(now())
+  isReconciled     Boolean        @default(false) @map("is_reconciled")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+
+  @@map("cash_flow_entries")
+}
+
+model ReserveFund {
+  id                   String   @id @default(uuid())
+  projectId            String   @unique @map("project_id")
+  totalSponsoredAmount Float    @default(0) @map("total_sponsored_amount")
+  reservePercentage    Float    @default(10.0) @map("reserve_percentage")
+  reserveAmount        Float    @default(0) @map("reserve_amount")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("reserve_funds")
+}
+
+model Stakeholder {
+  id               String                @id @default(uuid())
+  projectId        String                @map("project_id")
+  name             String
+  email            String?
+  phone            String?
+  role             String                // e.g. sponsor, mentor, judge, school, collaborator, follower
+  organization     String?
+  powerLevel       Int                   @default(1) @map("power_level") // 1-5
+  interestLevel    Int                   @default(1) @map("interest_level") // 1-5
+  engagementLevel  String                @default("unaware") @map("engagement_level") // unaware, resistant, neutral, supportive, leading
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+  
+  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  communicationMatrices CommunicationMatrix[]
+  communicationLogs     CommunicationLog[]
+
+  @@map("stakeholders")
+}
+
+model CommunicationMatrix {
+  id            String      @id @default(uuid())
+  projectId     String      @map("project_id")
+  stakeholderId String      @map("stakeholder_id")
+  reportWhat    String      @map("report_what")
+  channel       String
+  frequency     String
+  responsible   String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stakeholder   Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+
+  @@map("communication_matrices")
+}
+
+model CommunicationLog {
+  id                String      @id @default(uuid())
+  projectId         String      @map("project_id")
+  stakeholderId     String      @map("stakeholder_id")
+  date              DateTime    @default(now())
+  channel           String
+  summary           String?     @db.Text
+  audioAttachmentUrl String?     @map("audio_attachment_url")
+  keyPoints         Json?       @map("key_points") // key_points JSONB
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  project           Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stakeholder       Stakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+
+  @@map("communication_logs")
+}
+
+model Risk {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  title           String
+  description     String?  @db.Text
+  category        String   // "threat" or "opportunity"
+  area            String   // e.g. "Tecnico", "Financeiro", "Cronograma", "Aquisicoes"
+  probability     Int      // 1 to 5
+  impact          Int      // 1 to 5
+  riskScore       Int      @map("risk_score") // probability * impact
+  status          String   @default("active") // "active", "watch_list", "mitigated", "triggered"
+  mitigationPlan  String?  @map("mitigation_plan") @db.Text
+  contingencyPlan String?  @map("contingency_plan") @db.Text
+  comment         String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("risks")
+}
+
+model ScopeChangeLog {
+  id             String   @id @default(uuid())
+  projectId      String   @map("project_id")
+  taskId         String?  @map("task_id")
+  wbsItemId      String?  @map("wbs_item_id")
+  title          String
+  description    String?  @db.Text
+  impactOnTime   Int      @map("impact_on_time") // Days (+/-)
+  impactOnBudget Float    @map("impact_on_budget") // Cost (+/-)
+  decision       String   @default("pending") // "pending", "approved", "rejected"
+  justification  String?  @db.Text
+  requestedBy    String   @map("requested_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("scope_change_logs")
+}
+
+model StatusReport {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  reportDate      DateTime @default(now()) @map("report_date")
+  projectStatus   String   @map("project_status") // "good", "at_risk", "critical"
+  accomplishments String   @db.Text
+  ongoingTasks    String   @map("ongoing_tasks") @db.Text
+  blockers        String   @db.Text
+  comment         String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("status_reports")
+}
+
+model EvmSnapshot {
+  id           String   @id @default(uuid())
+  projectId    String   @map("project_id")
+  snapshotDate DateTime @map("snapshot_date")
+  pv           Float    @map("pv")
+  ev           Float    @map("ev")
+  ac           Float    @map("ac")
+  cpi          Float    @map("cpi")
+  spi          Float    @map("spi")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, snapshotDate])
+  @@map("evm_snapshots")
+}
+
+
