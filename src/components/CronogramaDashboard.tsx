@@ -485,7 +485,7 @@ function getFlowElements(tasksList: any[], depsList: any[], annotationsList: any
       id: t.id,
       data: {
         label: (
-          <div className={`p-3 rounded border text-left flex flex-col gap-1 w-52 bg-stone-950 text-white shadow-xl ${t.isCritical ? 'border-red-505 shadow-red-500/10 animate-pulse' : 'border-stone-850'}`}>
+          <div className={`p-3 rounded border text-left flex flex-col gap-1 w-52 bg-white dark:bg-stone-950 text-stone-800 dark:text-stone-100 shadow-xl ${t.isCritical ? 'border-red-500 shadow-red-500/10 animate-pulse' : 'border-stone-200 dark:border-stone-850'}`}>
             <div className="flex justify-between items-center">
               <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-black tracking-wider uppercase text-black ${statusColor}`}>
                 {t.status === 'todo' ? 'PENDENTE' : t.status === 'in_progress' ? 'EXECUÇÃO' : 'CONCLUÍDO'}
@@ -496,14 +496,14 @@ function getFlowElements(tasksList: any[], depsList: any[], annotationsList: any
                 </span>
               )}
             </div>
-            <div className="font-extrabold text-[11px] truncate leading-tight mt-1 text-white">{t.name}</div>
-            <div className="text-[10px] text-stone-400 mt-0.5 font-mono">
+            <div className="font-extrabold text-[11px] truncate leading-tight mt-1 text-stone-900 dark:text-white">{t.name}</div>
+            <div className="text-[10px] text-stone-500 dark:text-stone-400 mt-0.5 font-mono">
               📅 {t.startDate} até {t.endDate}
             </div>
             {t.totalFloat !== undefined && (
-              <div className="text-[9px] text-stone-500 mt-1 font-mono flex justify-between">
-                <span>Slack: <strong className={t.totalFloat === 0 ? "text-red-400" : "text-stone-400"}>{t.totalFloat} d</strong></span>
-                {t.isMilestone && <span className="text-[9px] text-orange-400 font-extrabold">◆ MARCO</span>}
+              <div className="text-[9px] text-stone-550 dark:text-stone-500 mt-1 font-mono flex justify-between">
+                <span>Slack: <strong className={t.totalFloat === 0 ? "text-red-500 font-extrabold" : "text-stone-700 dark:text-stone-400"}>{t.totalFloat} d</strong></span>
+                {t.isMilestone && <span className="text-[9px] text-orange-500 font-extrabold">◆ MARCO</span>}
               </div>
             )}
           </div>
@@ -1685,10 +1685,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         {enabledTabs.includes('wbs') && (
           <button
             onClick={() => setActiveSubTab('wbs')}
-            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition cursor-pointer ${
               activeSubTab === 'wbs' 
-                ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                ? 'border-red-505 text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-900/20'
             }`}
           >
             <GitBranch className="w-4 h-4 text-stone-400" />
@@ -1699,10 +1699,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         {enabledTabs.includes('5w2h') && (
           <button
             onClick={() => setActiveSubTab('5w2h')}
-            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition cursor-pointer ${
               activeSubTab === '5w2h' 
-                ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                ? 'border-red-505 text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-900/20'
             }`}
           >
             <Table className="w-4 h-4 text-stone-400" />
@@ -1713,10 +1713,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         {enabledTabs.includes('kanban') && (
           <button
             onClick={() => setActiveSubTab('kanban')}
-            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition cursor-pointer ${
               activeSubTab === 'kanban' 
-                ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                ? 'border-red-505 text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-900/20'
             }`}
           >
             <Kanban className="w-4 h-4 text-stone-400" />
@@ -1727,10 +1727,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         {enabledTabs.includes('eisenhower') && (
           <button
             onClick={() => setActiveSubTab('eisenhower')}
-            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition cursor-pointer ${
               activeSubTab === 'eisenhower' 
-                ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                ? 'border-red-505 text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-900/20'
             }`}
           >
             <Grid className="w-4 h-4 text-stone-400" />
@@ -1741,10 +1741,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         {enabledTabs.includes('gantt') && (
           <button
             onClick={() => setActiveSubTab('gantt')}
-            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition cursor-pointer ${
               activeSubTab === 'gantt' 
-                ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                ? 'border-red-505 text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-900/20'
             }`}
           >
             <Layers className="w-4 h-4 text-stone-400 animate-pulse" />
@@ -1755,10 +1755,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         {enabledTabs.includes('flow') && (
           <button
             onClick={() => setActiveSubTab('flow')}
-            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition cursor-pointer ${
               activeSubTab === 'flow' 
-                ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-900/20'
+                ? 'border-red-505 text-stone-900 dark:text-white bg-stone-100 dark:bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-stone-900/20'
             }`}
           >
             <Workflow className="w-4 h-4 text-stone-400" />
@@ -1769,19 +1769,19 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
       {/* FILTER CONTROL PANEL BAR */}
       {(activeSubTab === '5w2h' || activeSubTab === 'kanban' || activeSubTab === 'eisenhower') && (
-        <div className="bg-stone-900 border border-stone-850 p-4 rounded flex flex-wrap gap-4 items-center justify-between">
+        <div className="bg-stone-100 dark:bg-stone-900 border border-stone-250 dark:border-stone-850 p-4 rounded flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-3 items-center">
-            <span className="text-[10px] font-mono uppercase font-black text-stone-400">Filtrar Ativos:</span>
+            <span className="text-[10px] font-mono uppercase font-black text-stone-500 dark:text-stone-400">Filtrar Ativos:</span>
             
             <div className="flex flex-col">
               <select
                 value={filterOwner}
                 onChange={e => setFilterOwner(e.target.value)}
-                className="bg-stone-950 border border-stone-800 text-xs font-mono px-3 py-1.5 rounded text-white"
+                className="mach-input text-xs font-mono px-3 py-1.5 rounded text-stone-900 dark:text-stone-100"
               >
-                <option value="">-- Todos os Proprietários --</option>
+                <option value="" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">-- Todos os Proprietários --</option>
                 {users.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
+                  <option key={u.id} value={u.id} className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">{u.name}</option>
                 ))}
               </select>
             </div>
@@ -1790,12 +1790,12 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               <select
                 value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
-                className="bg-stone-950 border border-stone-800 text-xs font-mono px-3 py-1.5 rounded text-white"
+                className="mach-input text-xs font-mono px-3 py-1.5 rounded text-stone-900 dark:text-stone-100"
               >
-                <option value="">-- Todos Status --</option>
-                <option value="todo">Pendente (Todo)</option>
-                <option value="in_progress">Em Execução</option>
-                <option value="done">Concluído</option>
+                <option value="" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">-- Todos Status --</option>
+                <option value="todo" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Pendente (Todo)</option>
+                <option value="in_progress" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Em Execução</option>
+                <option value="done" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Concluído</option>
               </select>
             </div>
 
@@ -1803,13 +1803,13 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               <select
                 value={filterUrgency}
                 onChange={e => setFilterUrgency(e.target.value)}
-                className="bg-stone-950 border border-stone-800 text-xs font-mono px-3 py-1.5 rounded text-white"
+                className="mach-input text-xs font-mono px-3 py-1.5 rounded text-stone-900 dark:text-stone-100"
               >
-                <option value="">-- Nível de Criticidade --</option>
-                <option value="critical">Alto (Urgente & Importante)</option>
-                <option value="urgent">Apenas Urgente</option>
-                <option value="important">Apenas Importante</option>
-                <option value="normal">Baixo / Normal</option>
+                <option value="" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">-- Nível de Criticidade --</option>
+                <option value="critical" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Alto (Urgente & Importante)</option>
+                <option value="urgent" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Apenas Urgente</option>
+                <option value="important" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Apenas Importante</option>
+                <option value="normal" className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">Baixo / Normal</option>
               </select>
             </div>
           </div>
@@ -1817,7 +1817,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
           {(filterOwner || filterStatus || filterUrgency) && (
             <button
               onClick={() => { setFilterOwner(''); setFilterStatus(''); setFilterUrgency(''); }}
-              className="text-stone-400 hover:text-white font-mono text-[11px] underline"
+              className="text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white font-mono text-[11px] underline cursor-pointer"
             >
               Limpar Filtros Activos
             </button>
@@ -1905,10 +1905,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             </p>
           </div>
         ) : (
-          <div className="bg-stone-900 border border-stone-850 rounded overflow-hidden select-text">
-          <div className="p-4 bg-stone-900 border-b border-stone-850 flex items-center gap-4">
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded overflow-hidden select-text">
+          <div className="p-4 bg-stone-550/10 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-850 flex items-center gap-4">
             <Table className="w-4 h-4 text-red-550" />
-            <h3 className="text-xs font-black font-mono uppercase text-white tracking-widest">Planilha Dinâmica de 5W2H</h3>
+            <h3 className="text-xs font-black font-mono uppercase text-stone-900 dark:text-white tracking-widest">Planilha Dinâmica de 5W2H</h3>
             
             <button
               type="button"
@@ -1934,15 +1934,15 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               Exportar Excel
             </button>
 
-            <span className="text-[10px] font-mono text-stone-500 uppercase bg-stone-950 px-2 py-0.5 rounded border border-stone-850">
+            <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400 uppercase bg-stone-100 dark:bg-stone-950 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-850">
               Autosalvamento em tempo real (OnBlur)
             </span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs text-stone-300 min-w-[1200px]">
-              <thead className="bg-[#121212] border-b border-stone-850 text-stone-400 font-black uppercase text-[10px] tracking-wider">
-                <tr>
+            <table className="w-full text-left font-mono text-xs text-stone-800 dark:text-stone-300 min-w-[1200px]">
+              <thead className="border-b border-stone-200 dark:border-stone-850 text-stone-800 dark:text-stone-400 font-black uppercase text-[10px] tracking-wider">
+                <tr className="bg-stone-100 dark:bg-[#121212]">
                   <th className="p-3 w-12 text-center">Ref</th>
                   <th className="p-3 w-56">WHAT (Nome)</th>
                   <th className="p-3 w-56">WHY (Justificativa)</th>
@@ -1991,7 +1991,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   filteredTasks.map(task => {
                     const isAllowed = checkTaskPermission(task);
                     return (
-                      <tr key={task.id} className="hover:bg-stone-850/40 group transition">
+                      <tr key={task.id} className="hover:bg-stone-100 dark:hover:bg-stone-850/40 group transition">
                         <td className="p-2 text-center text-stone-500 font-bold text-[10px]">
                           {task.id.slice(0, 5).toUpperCase()}
                         </td>
@@ -2102,7 +2102,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             <button
                               onClick={() => handleOpenEditTask(task)}
                               title="Editar Detalhes / PERT"
-                              className="p-1 bg-stone-950 hover:bg-stone-850 hover:text-white rounded"
+                              className="p-1 bg-stone-100 dark:bg-stone-955 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-850 hover:text-stone-900 dark:hover:text-white rounded cursor-pointer"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
@@ -2110,7 +2110,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                               <button
                                 onClick={() => deleteTask(task.id)}
                                 title="Deletar Tarefa"
-                                className="p-1 bg-stone-950 hover:bg-red-950 text-stone-400 hover:text-red-500 rounded"
+                                className="p-1 bg-stone-100 dark:bg-stone-955 border border-stone-200 dark:border-stone-800 text-stone-550 dark:text-stone-500 hover:bg-red-100 dark:hover:bg-red-950/40 hover:text-red-650 rounded cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -2227,17 +2227,17 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                           </div>
 
                           {/* Quick change actions if Drag/Drop isn't preferred or allowed */}
-                          <div className="flex justify-end gap-1.5 pt-1.5 mt-1 hover:opacity-100 opacity-20 transition border-t border-stone-900/10">
+                          <div className="flex justify-end gap-1.5 pt-1.5 mt-1 hover:opacity-100 opacity-20 transition border-t border-stone-200 dark:border-stone-900/60">
                             <button
                               onClick={() => handleOpenEditTask(task)}
-                              className="text-[9px] font-mono bg-stone-900 text-stone-400 hover:text-white px-2 py-0.5 rounded"
+                              className="text-[9px] font-mono bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white px-2 py-0.5 rounded cursor-pointer"
                             >
                               EDITAR
                             </button>
                             {isAllowed && colStatus !== 'todo' && (
                               <button
                                 onClick={() => handleMoveAction(task.id, 'todo')}
-                                className="text-[8px] font-mono uppercase bg-stone-900 text-stone-500 hover:text-white px-1.5 py-0.5 rounded"
+                                className="text-[8px] font-mono uppercase bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white px-1.5 py-0.5 rounded cursor-pointer"
                               >
                                 Todo
                               </button>
@@ -2245,7 +2245,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             {isAllowed && colStatus !== 'in_progress' && (
                               <button
                                 onClick={() => handleMoveAction(task.id, 'in_progress')}
-                                className="text-[8px] font-mono uppercase bg-stone-900 text-stone-500 hover:text-white px-1.5 py-0.5 rounded"
+                                className="text-[8px] font-mono uppercase bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white px-1.5 py-0.5 rounded cursor-pointer"
                               >
                                 Run
                               </button>
@@ -2253,7 +2253,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             {isAllowed && colStatus !== 'done' && (
                               <button
                                 onClick={() => handleMoveAction(task.id, 'done')}
-                                className="text-[8px] font-mono uppercase bg-stone-900 text-stone-500 hover:text-white px-1.5 py-0.5 rounded"
+                                className="text-[8px] font-mono uppercase bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800 hover:text-stone-900 dark:hover:text-white px-1.5 py-0.5 rounded cursor-pointer"
                               >
                                 Done
                               </button>
@@ -2290,11 +2290,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: true, isImportant: true })}
               className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-red-500 transition-all hover:bg-stone-900/60"
             >
-              <div className="flex items-center gap-2 border-b border-stone-850 pb-3 mb-4">
-                <span className="text-xs bg-red-950 border border-red-800 text-red-550 font-mono px-2 py-0.5 rounded font-bold uppercase">
+              <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
+                <span className="text-xs bg-red-100 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
                   Q1 • URGENTE & IMPORTANTE
                 </span>
-                <span className="text-[10px] font-mono text-stone-400">AGIR (Foco Crítico Imediato)</span>
+                <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400">AGIR (Foco Crítico Imediato)</span>
               </div>
               {renderEisenhowerTaskContainer(true, true)}
             </div>
@@ -2305,11 +2305,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: false, isImportant: true })}
               className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-orange-400 transition-all hover:bg-stone-900/60"
             >
-              <div className="flex items-center gap-2 border-b border-stone-850 pb-3 mb-4">
-                <span className="text-xs bg-orange-950 border border-orange-850 text-orange-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
+              <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
+                <span className="text-xs bg-orange-100 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/60 text-orange-750 dark:text-orange-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
                   Q2 • IMPORTANTE (NÃO URGENTE)
                 </span>
-                <span className="text-[10px] font-mono text-stone-400">REGRAR (Planejar e Modelar)</span>
+                <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400">REGRAR (Planejar e Modelar)</span>
               </div>
               {renderEisenhowerTaskContainer(false, true)}
             </div>
@@ -2320,11 +2320,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: true, isImportant: false })}
               className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-yellow-500 transition-all hover:bg-stone-900/60"
             >
-              <div className="flex items-center gap-2 border-b border-stone-850 pb-3 mb-4">
-                <span className="text-xs bg-yellow-950 border border-yellow-800 text-yellow-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
+              <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
+                <span className="text-xs bg-yellow-100 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-900/60 text-yellow-750 dark:text-yellow-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
                   Q3 • URGENTE (NÃO IMPORTANTE)
                 </span>
-                <span className="text-[10px] font-mono text-stone-400">DELEGAR (Agilizar ou Filtrar)</span>
+                <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400">DELEGAR (Agilizar ou Filtrar)</span>
               </div>
               {renderEisenhowerTaskContainer(true, false)}
             </div>
@@ -2335,11 +2335,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: false, isImportant: false })}
               className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-stone-600 transition-all hover:bg-stone-900/60"
             >
-              <div className="flex items-center gap-2 border-b border-stone-850 pb-3 mb-4">
-                <span className="text-xs bg-stone-950 border border-stone-800 text-stone-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
+              <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
+                <span className="text-xs bg-stone-100 dark:bg-stone-900 border border-stone-250 dark:border-stone-800 text-stone-800 dark:text-stone-300 font-mono px-2 py-0.5 rounded font-bold uppercase">
                   Q4 • NÃO URGENTE & NÃO IMPORTANTE
                 </span>
-                <span className="text-[10px] font-mono text-stone-500">ELIMINAR (Deixar para depois)</span>
+                <span className="text-[10px] font-mono text-stone-500 dark:text-stone-450">ELIMINAR (Deixar para depois)</span>
               </div>
               {renderEisenhowerTaskContainer(false, false)}
             </div>
@@ -2454,18 +2454,18 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         return (
           <div className="space-y-6 font-mono text-xs select-text">
             {/* Header controls pane */}
-            <div className="bg-stone-900 border border-stone-850 p-4 rounded-lg flex flex-wrap items-center justify-between gap-4">
+            <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-850 p-4 rounded-lg flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="text-[10px] uppercase font-black text-stone-400">Escala (Zoom):</span>
-                <div className="flex bg-stone-950 border border-stone-880 rounded p-0.5">
+                <span className="text-[10px] uppercase font-black text-stone-500 dark:text-stone-400">Escala (Zoom):</span>
+                <div className="flex bg-stone-100 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded p-0.5">
                   {(['day', 'week', 'month'] as const).map(scale => (
                     <button
                       key={scale}
                       onClick={() => setGanttScale(scale)}
-                      className={`px-3 py-1 rounded text-[10px] font-black uppercase transition ${
+                      className={`px-3 py-1 rounded text-[10px] font-black uppercase transition cursor-pointer ${
                         ganttScale === scale
-                          ? 'bg-red-505 text-white'
-                          : 'text-stone-400 hover:text-white'
+                          ? 'accent-bg text-white'
+                          : 'text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white'
                       }`}
                     >
                       {scale === 'day' ? 'Diário' : scale === 'week' ? 'Semanal' : 'Consolidado'}
@@ -2486,9 +2486,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 <button
                   type="button"
                   onClick={() => setShowAddMilestone(true)}
-                  className="bg-stone-950 border border-stone-800 hover:border-stone-700 text-stone-300 font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                  className="bg-stone-100 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 hover:border-stone-400 dark:hover:border-stone-700 text-stone-700 dark:text-stone-300 font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5 text-red-505" />
+                  <Plus className="w-3.5 h-3.5 text-red-600 animate-pulse" />
                   Novo Marco Datas-Chave
                 </button>
               </div>
@@ -2496,34 +2496,34 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
             {/* Manual milestones list panel */}
             {customMilestones.length > 0 && (
-              <div className="bg-stone-955 border border-stone-850 rounded p-3 flex flex-wrap gap-3 items-center">
-                <span className="text-[9px] font-black uppercase text-red-550">Marcos Ativos:</span>
+              <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-850 rounded p-3 flex flex-wrap gap-3 items-center">
+                <span className="text-[9px] font-black uppercase text-red-600">Marcos Ativos:</span>
                 {customMilestones.map(m => (
-                  <div key={m.id} className="bg-stone-900 border border-stone-800 text-[10px] px-2.5 py-1 rounded flex items-center gap-2 text-white">
+                  <div key={m.id} className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-[10px] px-2.5 py-1 rounded flex items-center gap-2 text-stone-800 dark:text-stone-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
                     <strong>{m.name}</strong> ({m.date})
-                    <button onClick={() => handleRemoveMilestone(m.id)} className="text-stone-500 hover:text-red-400 font-black pl-1">X</button>
+                    <button onClick={() => handleRemoveMilestone(m.id)} className="text-stone-500 hover:text-red-600 font-black pl-1 cursor-pointer">X</button>
                   </div>
                 ))}
               </div>
             )}
 
             {/* Gantt Grid Panel */}
-            <div id="gantt-chart-export-container" className="border border-stone-850 rounded-lg overflow-hidden flex flex-col md:flex-row bg-stone-950">
+            <div id="gantt-chart-export-container" className="border border-stone-200 dark:border-stone-850 rounded-lg overflow-hidden flex flex-col md:flex-row bg-white dark:bg-stone-950">
               {/* Left Task Sheet List */}
-              <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-stone-850 flex flex-col shrink-0 select-text">
-                <div className="bg-stone-900 px-4 py-3 border-b border-stone-850 font-black tracking-wider uppercase text-stone-300 h-14 flex items-center">
+              <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-stone-200 dark:border-stone-850 flex flex-col shrink-0 select-text">
+                <div className="bg-stone-50 dark:bg-stone-900 px-4 py-3 border-b border-stone-200 dark:border-stone-850 font-black tracking-wider uppercase text-stone-800 dark:text-stone-300 h-14 flex items-center">
                   Atividade / Cronograma
                 </div>
                 <div className="flex flex-col">
                   {tasks.map(t => (
-                    <div key={t.id} className="h-12 border-b border-stone-850/60 px-4 flex items-center justify-between hover:bg-stone-900/20 text-[11px]">
-                      <div className="truncate pr-2 font-bold text-stone-100 flex items-center gap-1.5">
+                    <div key={t.id} className="h-12 border-b border-stone-200 dark:border-stone-850/60 px-4 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-stone-900/20 text-[11px]">
+                      <div className="truncate pr-2 font-bold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
                         {t.isCritical && <span className="w-1.5 h-1.5 rounded-full bg-red-505 animate-pulse" />}
                         {t.isMilestone && <span className="text-orange-400 font-extrabold pr-0.5">◆</span>}
                         {t.name}
                       </div>
-                      <div className="text-[10px] font-mono text-stone-500 shrink-0 text-right">
+                      <div className="text-[10px] font-mono text-stone-500 dark:text-stone-400 shrink-0 text-right">
                         <span className={`${t.isCritical ? 'text-red-400 font-black' : ''}`}>{t.isCritical ? 'CRITICAL' : `${t.totalFloat}d margem`}</span>
                       </div>
                     </div>
@@ -2784,8 +2784,8 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               </ReactFlow>
 
               {/* Float guide panel - repositioned to top-4 right-4 */}
-              <div className="absolute top-4 right-4 bg-stone-900/90 border border-stone-800 backdrop-blur p-3 rounded text-[10px] text-stone-350 dark:text-stone-300 space-y-1.5 pointer-events-none z-10 font-bold">
-                <div className="text-[10px] uppercase font-black tracking-wider text-red-505 select-none text-center border-b border-stone-800 pb-1 mb-1">
+              <div className="absolute top-4 right-4 bg-white/90 dark:bg-stone-900/90 border border-stone-200 dark:border-stone-800 backdrop-blur p-3 rounded text-[10px] text-stone-800 dark:text-stone-300 space-y-1.5 pointer-events-none z-10 font-bold shadow-sm">
+                <div className="text-[10px] uppercase font-black tracking-wider text-red-650 dark:text-red-500 select-none text-center border-b border-stone-200 dark:border-stone-800 pb-1 mb-1">
                   Guia de Canvas
                 </div>
                 <div className="flex items-center gap-2">
@@ -2797,14 +2797,14 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   <span>Caminhos Normais</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3 bg-stone-900 border border-yellow-500/40 rounded" />
+                  <span className="w-3.5 h-3 bg-stone-50 dark:bg-stone-950 border border-yellow-500/40 rounded" />
                   <span>Blocos Livres / Notas</span>
                 </div>
               </div>
 
               {/* Quick Styling Panel */}
               {(selectedNodeId || selectedEdgeId) && (
-                <div className="absolute bottom-4 left-4 bg-stone-900/95 dark:bg-stone-950/95 border border-stone-250 dark:border-stone-800 p-4 rounded-lg shadow-xl z-20 text-[10px] space-y-3 font-mono max-w-sm pointer-events-auto">
+                <div className="absolute bottom-4 left-4 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 p-4 rounded-lg shadow-xl z-20 text-[10px] space-y-3 font-mono max-w-sm pointer-events-auto shadow-stone-200/50 dark:shadow-black/50">
                   <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-800 pb-2 mb-2">
                     <span className="font-extrabold uppercase text-stone-900 dark:text-stone-100">
                       {selectedNodeId ? 'Estilizar Bloco' : 'Estilizar Conexão'}
@@ -3365,9 +3365,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                       id="isMilestoneCheckbox"
                       checked={taskIsMilestone}
                       onChange={e => setTaskIsMilestone(e.target.checked)}
-                      className="w-4 h-4 rounded border-stone-850 bg-stone-950 text-red-505 focus:ring-0 cursor-pointer"
+                      className="w-4 h-4 rounded border-stone-850 bg-stone-950 text-red-550 focus:ring-0 cursor-pointer"
                     />
-                    <label htmlFor="isMilestoneCheckbox" className="text-stone-300 font-bold uppercase tracking-wider text-[11px] cursor-pointer">
+                    <label htmlFor="isMilestoneCheckbox" className="text-stone-500 dark:text-stone-300 font-bold uppercase tracking-wider text-[11px] cursor-pointer">
                       Esta Atividade é um marco / milestone?
                     </label>
                   </div>
@@ -3377,23 +3377,23 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
               {/* COMENTÁRIO / FEEDBACK AUDITÁVEL */}
               <div className="space-y-1">
-                <label htmlFor="task-comment" className="text-stone-300 block font-bold uppercase tracking-wider text-[10.5px] font-mono">Comentário ou Notas de Auditoria (Mentor / Coordenadores)</label>
+                <label htmlFor="task-comment" className="text-stone-850 dark:text-stone-300 block font-bold uppercase tracking-wider text-[10.5px] font-mono">Comentário ou Notas de Auditoria (Mentor / Coordenadores)</label>
                 <textarea
                   id="task-comment"
                   placeholder="Seja construtivo: adicione observações, diretrizes ou orientações estratégicas de mentoria."
                   value={taskComment}
                   onChange={e => setTaskComment(e.target.value)}
-                  className="mach-input w-full min-h-[80px] p-3 rounded bg-stone-950 border border-stone-850 text-white font-mono text-xs focus:border-red-505 focus:outline-none focus:ring-1 focus:ring-red-505/50"
+                  className="mach-input w-full min-h-[80px] p-3 rounded bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-850 text-stone-900 dark:text-white font-mono text-xs focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500/50"
                 />
-                <p className="text-[9.5px] text-stone-500 font-mono">Nota: Mentores e Sponsors possuem autonomia de ler e comentar em todos os entregáveis do cronograma car.</p>
+                <p className="text-[9.5px] text-stone-500 dark:text-stone-400 font-mono">Nota: Mentores e Sponsors possuem autonomia de ler e comentar em todos os entregáveis do cronograma car.</p>
               </div>
 
               {/* ACTION DIALOG BOUNDARIES */}
-              <div className="pt-2 flex justify-end gap-2 border-t border-stone-800">
+              <div className="pt-2 flex justify-end gap-2 border-t border-stone-200 dark:border-stone-800">
                 <button
                   type="button"
                   onClick={() => setShowTaskForm(false)}
-                  className="bg-stone-950 hover:bg-stone-850 px-4 py-2.5 rounded text-stone-300 font-bold uppercase tracking-wider text-[11px]"
+                  className="bg-stone-100 dark:bg-stone-955 border border-stone-200 dark:border-stone-800 hover:bg-stone-200 dark:hover:bg-stone-850 px-4 py-2.5 rounded text-stone-800 dark:text-stone-300 font-bold uppercase tracking-wider text-[11px] cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -3558,17 +3558,17 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         onDragOver={handleDragOver}
         onDrop={(e) => handleWbsDropOnNode(e, node.id)}
         style={{ marginLeft: `${depth * 20}px` }}
-        className="space-y-1.5 border-l border-stone-800 pl-4 py-1.5 transition-all relative"
+        className="space-y-1.5 border-l border-stone-200 dark:border-stone-800 pl-4 py-1.5 transition-all relative"
       >
         {/* Visual Line tree markers */}
-        <div className="absolute top-0 left-0 w-3.5 h-1/2 border-b border-stone-800"></div>
+        <div className="absolute top-0 left-0 w-3.5 h-1/2 border-b border-stone-200 dark:border-stone-800"></div>
 
-        <div className="bg-stone-950 border border-stone-850/80 rounded-lg p-3 hover:border-stone-700 flex flex-col md:flex-row md:items-center justify-between gap-3 select-text group">
+        <div className="bg-stone-50 dark:bg-stone-955 border border-stone-200 dark:border-stone-850/80 rounded-lg p-3 hover:border-stone-300 dark:hover:border-stone-700 flex flex-col md:flex-row md:items-center justify-between gap-3 select-text group">
           <div className="flex items-center gap-2 flex-grow">
             {hasActiveChildren ? (
               <button
                 onClick={toggleCollapse}
-                className="p-1 hover:bg-stone-850 rounded text-stone-400 group-hover:text-white"
+                className="p-1 hover:bg-stone-200 dark:hover:bg-stone-850 rounded text-stone-500 dark:text-stone-400 group-hover:text-stone-900 dark:group-hover:text-white cursor-pointer"
               >
                 {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -3576,16 +3576,16 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               <span className="w-4 h-4 inline-block"></span>
             )}
 
-            <span className="font-mono text-xs bg-red-950/40 border border-red-500/20 text-red-400 px-2 py-0.5 rounded font-extrabold uppercase">
+            <span className="font-mono text-xs bg-red-100 dark:bg-red-950/40 border border-red-200 dark:border-red-900/30 text-red-650 dark:text-red-400 px-2 py-0.5 rounded font-extrabold uppercase">
               {node.code}
             </span>
 
             <div className="flex flex-col">
-              <span className="font-extrabold text-white text-[13px] uppercase tracking-wide">
+              <span className="font-extrabold text-stone-900 dark:text-white text-[13px] uppercase tracking-wide">
                 {node.name}
               </span>
               {node.description && (
-                <span className="text-[10px] text-stone-500 font-sans leading-normal">
+                <span className="text-[10px] text-stone-600 dark:text-stone-500 font-sans leading-normal">
                   {node.description}
                 </span>
               )}
@@ -3595,7 +3595,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
           <div className="flex items-center gap-2 self-end md:self-auto uppercase font-mono text-[9px]">
             {/* Task Indicator counts */}
             {nodeTasks.length > 0 && (
-              <span className="bg-stone-900 border border-stone-800 px-2.5 py-1 rounded text-stone-450 font-bold block">
+              <span className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 px-2.5 py-1 rounded text-stone-600 dark:text-stone-400 font-bold block">
                 {nodeTasks.length} Atividades Fiscais
               </span>
             )}
@@ -3604,7 +3604,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handleOpenAddTask(node.id)}
-                className="bg-stone-900 border border-stone-800 hover:border-red-500 text-stone-300 hover:text-white px-2 py-1 rounded font-bold uppercase transition flex items-center gap-1 text-[9.5px]"
+                className="bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-red-500 text-stone-800 dark:text-stone-300 hover:text-red-500 dark:hover:text-white px-2 py-1 rounded font-bold uppercase transition flex items-center gap-1 text-[9.5px] cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> + Tarefa
               </button>
@@ -3614,21 +3614,21 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   <button
                     onClick={() => handleOpenAddWbs(node.id)}
                     title="Novo Subitem EDT/EAP"
-                    className="p-1 bg-stone-900 hover:bg-stone-800 rounded border border-stone-800"
+                    className="p-1 bg-stone-100 dark:bg-stone-900 hover:bg-stone-250 dark:hover:bg-stone-800 rounded border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white cursor-pointer"
                   >
-                    <FolderPlus className="w-3.5 h-3.5 text-stone-400" />
+                    <FolderPlus className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleOpenEditWbs(node)}
                     title="Editar edt"
-                    className="p-1 bg-stone-900 hover:bg-stone-800 rounded border border-stone-800"
+                    className="p-1 bg-stone-100 dark:bg-stone-900 hover:bg-stone-250 dark:hover:bg-stone-800 rounded border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white cursor-pointer"
                   >
-                    <Edit2 className="w-3.5 h-3.5 text-stone-400" />
+                    <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => deleteWbsItem(node.id)}
                     title="Deletar EDT"
-                    className="p-1 bg-stone-900 hover:bg-red-950 text-stone-550 hover:text-red-500 rounded border border-stone-800"
+                    className="p-1 bg-stone-100 dark:bg-stone-900 hover:bg-red-100 dark:hover:bg-red-950/40 rounded border border-stone-200 dark:border-stone-800 text-stone-550 dark:text-stone-500 hover:text-red-650 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -3649,18 +3649,18 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 <div
                   key={task.id}
                   style={{ marginLeft: '24px' }}
-                  className="bg-stone-950/40 hover:bg-stone-900 border border-stone-900 rounded-lg p-3 group/task flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs select-text relative transition"
+                  className="bg-stone-100/40 dark:bg-stone-950/40 hover:bg-stone-100/80 dark:hover:bg-stone-900 border border-stone-200 dark:border-stone-900 rounded-lg p-3 group/task flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs select-text relative transition"
                 >
-                  <div className="absolute top-0 left-0 w-3 h-1/2 border-b border-stone-800"></div>
+                  <div className="absolute top-0 left-0 w-3 h-1/2 border-b border-stone-850 dark:border-stone-800"></div>
 
                   <div className="flex items-start gap-2">
-                    <span className="w-2 h-2 rounded-full bg-stone-600 mt-1.5 shrink-0"></span>
+                    <span className="w-2 h-2 rounded-full bg-stone-500 mt-1.5 shrink-0"></span>
                     <div className="flex flex-col">
-                      <p className="font-semibold text-white uppercase italic tracking-wide">
+                      <p className="font-semibold text-stone-900 dark:text-white uppercase italic tracking-wide">
                         {task.name}
                       </p>
                       {task.why && (
-                        <span className="text-[10.5px] text-stone-400 font-sans leading-normal">
+                        <span className="text-[10.5px] text-stone-500 dark:text-stone-400 font-sans leading-normal">
                           Porquê: {task.why}
                         </span>
                       )}
@@ -3668,24 +3668,24 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto text-[10px] font-mono leading-none">
-                    <span className="text-stone-500 font-bold bg-stone-900 px-2 py-0.5 rounded border border-stone-850 select-none">
+                    <span className="text-stone-600 dark:text-stone-450 font-bold bg-stone-100 dark:bg-stone-900 px-2 py-0.5 rounded border border-stone-200 dark:border-stone-850 select-none">
                       RESP: {userMap[task.whoOwnerId || ''] || 'Pendente'}
                     </span>
 
                     <span className={`px-2 py-0.5 rounded font-black text-[9px] uppercase border ${
                       task.status === 'done' 
-                        ? 'bg-green-950/20 border-green-800 text-green-500' 
+                        ? 'bg-green-100 dark:bg-green-950/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-500' 
                         : task.status === 'in_progress' 
-                          ? 'bg-blue-950/20 border-blue-800 text-blue-500' 
-                          : 'bg-orange-950/20 border-orange-800/60 text-orange-400'
+                          ? 'bg-blue-100 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-500' 
+                          : 'bg-orange-100 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800/60 text-orange-700 dark:text-orange-400'
                     }`}>
                       {task.status === 'done' ? 'CONCLUÍDO' : task.status === 'in_progress' ? 'EXECUÇÃO' : 'PENDENTE'}
                     </span>
 
                     <span className={`px-2 py-0.5 rounded text-[8.5px] border ${
                       remain.state === 'overdue' 
-                        ? 'bg-red-950/40 border-red-800 text-red-500' 
-                        : 'bg-stone-900 border-stone-800 text-stone-400'
+                        ? 'bg-red-100 dark:bg-red-955 border-red-200 dark:border-red-800 text-red-700 dark:text-red-500' 
+                        : 'bg-stone-100 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400'
                     }`}>
                       {remain.text}
                     </span>
@@ -3694,7 +3694,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                       <button
                         onClick={() => handleOpenEditTask(task)}
                         title="Editar Detalhes"
-                        className="p-1 bg-stone-900 hover:bg-stone-800 rounded font-bold uppercase text-stone-400 hover:text-white"
+                        className="p-1 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-stone-200 dark:hover:bg-stone-800 rounded font-bold uppercase text-stone-650 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -3702,7 +3702,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                         <button
                           onClick={() => deleteTask(task.id)}
                           title="Deletar Atividade"
-                          className="p-1 bg-stone-900 hover:bg-red-950 rounded text-stone-500 hover:text-red-500"
+                          className="p-1 bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:bg-red-100 dark:hover:bg-red-950 rounded text-stone-650 dark:text-stone-500 hover:text-red-650 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
