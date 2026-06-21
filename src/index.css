@@ -157,6 +157,9 @@
   .bg-stone-950\/20 { background-color: rgba(250, 250, 249, 0.2) !important; }
   .bg-stone-950\/45 { background-color: rgba(250, 250, 249, 0.45) !important; }
   .bg-stone-905\/20 { background-color: rgba(245, 245, 244, 0.2) !important; }
+  .bg-stone-955 { background-color: #f5f5f4 !important; }
+  .bg-stone-955\/20 { background-color: rgba(245, 245, 244, 0.2) !important; }
+  .bg-stone-955\/50 { background-color: rgba(245, 245, 244, 0.5) !important; }
 
   /* Bordas */
   .border-stone-800,
@@ -198,4 +201,37 @@
   .text-red-505 {
     color: var(--accent) !important;
   }
+
+  /* Novas classes de opacidade no Light Mode */
+  .bg-stone-950\/98 { background-color: rgba(250, 250, 249, 0.98) !important; }
+  .bg-stone-900\/90 { background-color: rgba(255, 255, 255, 0.9) !important; }
 }
+
+/* ── React Flow Theme Overrides ── */
+.react-flow__controls button {
+  background-color: #1c1917 !important;
+  border-bottom: 1px solid #2e2a24 !important;
+  color: #fafaf9 !important;
+  fill: #fafaf9 !important;
+}
+.react-flow__controls button:hover {
+  background-color: #292524 !important;
+}
+.react-flow__controls button svg {
+  fill: #fafaf9 !important;
+  color: #fafaf9 !important;
+}
+:root[data-theme="light"] .react-flow__controls button {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e7e5e4 !important;
+  color: #1c1917 !important;
+  fill: #1c1917 !important;
+}
+:root[data-theme="light"] .react-flow__controls button:hover {
+  background-color: #f5f5f4 !important;
+}
+:root[data-theme="light"] .react-flow__controls button svg {
+  fill: #1c1917 !important;
+  color: #1c1917 !important;
+}
+

@@ -943,22 +943,21 @@ export default function LegacyApp() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/98 backdrop-blur-md flex flex-col p-6 md:p-10 text-stone-100"
+                  className="fixed inset-0 z-50 overflow-y-auto bg-stone-950/98 backdrop-blur-md flex flex-col p-6 md:p-10 text-stone-850 dark:text-stone-100"
                 >
                   <div className="max-w-5xl mx-auto w-full flex-grow flex flex-col space-y-6">
-                    {/* Header do Modal */}
-                    <div className="flex justify-between items-center pb-6 border-b border-stone-800">
+                    <div className="flex justify-between items-center pb-6 border-b border-stone-250 dark:border-stone-800">
                       <div>
-                        <h2 className="text-xl font-display font-black uppercase text-white tracking-wider">
+                        <h2 className="text-xl font-display font-black uppercase text-stone-900 dark:text-stone-100 tracking-wider">
                           Configurações do Sistema
                         </h2>
-                        <p className="text-xs text-stone-400 font-mono mt-1">
+                        <p className="text-xs text-stone-450 font-mono mt-1">
                           Mach Control Legacy • Painel de Gestão e Customização
                         </p>
                       </div>
                       <button
                         onClick={() => setShowSettings(false)}
-                        className="p-2 px-4 rounded-lg border border-stone-800 text-stone-300 hover:text-white hover:border-stone-700 bg-stone-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 font-mono text-xs uppercase shadow"
+                        className="p-2 px-4 rounded-lg border border-stone-250 dark:border-stone-800 text-stone-750 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white bg-stone-50 dark:bg-stone-900 transition-all cursor-pointer flex items-center justify-center gap-1.5 font-mono text-xs uppercase shadow"
                       >
                         <X className="w-4 h-4" /> Fechar
                       </button>
@@ -977,7 +976,7 @@ export default function LegacyApp() {
                             setMachConfig(updated);
                             localStorage.setItem('mach_config', JSON.stringify(updated));
                           }}
-                          className="mach-input bg-stone-900 border-stone-800 text-white placeholder-stone-500 w-full"
+                          className="mach-input w-full"
                         />
                       </div>
 
@@ -1019,7 +1018,7 @@ export default function LegacyApp() {
                             setMachConfig(updated);
                             localStorage.setItem('mach_config', JSON.stringify(updated));
                           }}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-stone-800 text-stone-300 text-xs font-bold transition-all cursor-pointer bg-stone-900 w-full justify-center"
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-stone-250 dark:border-stone-800 text-stone-750 dark:text-stone-300 text-xs font-bold transition-all cursor-pointer bg-stone-50 dark:bg-stone-900 w-full justify-center"
                         >
                           {machConfig?.theme === 'dark' ? 'Escuro' : 'Claro'}
                         </button>
@@ -1035,7 +1034,7 @@ export default function LegacyApp() {
                             setMachConfig(updated);
                             localStorage.setItem('mach_config', JSON.stringify(updated));
                           }}
-                          className="mach-input py-1.5 text-xs font-bold capitalize cursor-pointer bg-stone-900 border-stone-800 text-white w-full"
+                          className="mach-input py-1.5 text-xs font-bold capitalize cursor-pointer w-full"
                         >
                           <option value="regional">Regional</option>
                           <option value="nacional">Nacional</option>
@@ -1045,11 +1044,11 @@ export default function LegacyApp() {
                     </div>
 
                     {/* Seção 2: Métodos do Cronograma */}
-                    <div className="pt-6 border-t border-stone-800 space-y-3.5">
-                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-400">
+                    <div className="pt-6 border-t border-stone-250 dark:border-stone-800 space-y-3.5">
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                         Métodos de Cronograma Ativos
                       </h3>
-                      <div className="flex flex-wrap gap-6 select-none bg-stone-900/60 p-4 rounded-xl border border-stone-850">
+                      <div className="flex flex-wrap gap-6 select-none bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850">
                         {[
                           { key: 'enableWbs', label: 'WBS / EAP' },
                           { key: 'enable5w2h', label: 'Planilha 5W2H' },
@@ -1060,16 +1059,17 @@ export default function LegacyApp() {
                         ].map(method => {
                           const isEnabled = machConfig?.[method.key as keyof OrgConfig] !== false;
                           return (
-                            <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-300 hover:text-white">
+                            <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
                               <input
                                 type="checkbox"
+                                id={`legacy-method-${method.key}`}
                                 checked={isEnabled}
                                 onChange={e => {
                                   const updated = { ...machConfig!, [method.key]: e.target.checked };
                                   setMachConfig(updated);
                                   localStorage.setItem('mach_config', JSON.stringify(updated));
                                 }}
-                                className="w-4 h-4 rounded text-[#DC2626] border-stone-850 bg-stone-955 focus:ring-[#DC2626]"
+                                className="w-4 h-4 rounded text-[#DC2626] border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-950 focus:ring-[#DC2626]"
                               />
                               <span>{method.label}</span>
                             </label>
@@ -1080,8 +1080,8 @@ export default function LegacyApp() {
 
                     {/* Seção 3: Gerenciar Membros (Apenas Gestor) */}
                     {isGestorGlobal && (
-                      <div className="pt-6 border-t border-stone-800 space-y-4">
-                        <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-400">
+                      <div className="pt-6 border-t border-stone-250 dark:border-stone-800 space-y-4">
+                        <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                           Gerenciar Membros da Equipe
                         </h3>
                         
@@ -1098,16 +1098,16 @@ export default function LegacyApp() {
                               return (
                                 <div
                                   key={u.id}
-                                  className="border border-stone-800 bg-stone-900 rounded-xl p-4 space-y-3"
+                                  className="border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 rounded-xl p-4 space-y-3"
                                 >
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="text-sm font-bold text-white">{u.name}</p>
+                                      <p className="text-sm font-bold text-stone-900 dark:text-stone-100">{u.name}</p>
                                       <p className="text-xs font-mono text-stone-500">{u.email}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                                        isUserAdmin ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-stone-800 text-stone-400'
+                                        isUserAdmin ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-250 dark:border-stone-750'
                                       }`}>
                                         {role === 'technical_lead' ? 'Técnico' : role === 'admin' ? 'Gestor' : role}
                                       </span>
@@ -1178,7 +1178,7 @@ export default function LegacyApp() {
                                               className={`text-[10px] font-mono px-2 py-1 rounded border transition-all cursor-pointer ${
                                                 isVisible
                                                   ? 'bg-red-655 border-red-500 text-white shadow font-bold bg-[#DC2626]'
-                                                  : 'bg-stone-950 border-stone-850 text-stone-500 hover:border-stone-750'
+                                                  : 'bg-stone-100 dark:bg-stone-950 border-stone-250 dark:border-stone-850 text-stone-500 hover:border-stone-400 dark:hover:border-stone-750'
                                               }`}
                                             >
                                               {proj.name}
@@ -1191,7 +1191,7 @@ export default function LegacyApp() {
 
                                   {/* Tab visibility checkboxes */}
                                   {u.id !== activeUser?.id && (
-                                    <div className="pt-2 border-t border-stone-800/40">
+                                    <div className="pt-2 border-t border-stone-200 dark:border-stone-800/40">
                                       <p className="text-[9px] font-mono uppercase tracking-wider mb-2 text-stone-500">
                                         Abas visíveis no projeto atual:
                                       </p>
@@ -1231,7 +1231,7 @@ export default function LegacyApp() {
                                               className={`text-[9px] font-mono px-2 py-1 rounded border transition-all cursor-pointer capitalize ${
                                                 isTabVisible
                                                   ? 'bg-red-655 border-red-500 text-white shadow font-bold bg-[#DC2626]'
-                                                  : 'bg-stone-950 border-stone-850 text-stone-500 hover:border-stone-750'
+                                                  : 'bg-stone-100 dark:bg-stone-950 border-stone-250 dark:border-stone-850 text-stone-500 hover:border-stone-400 dark:hover:border-stone-750'
                                               }`}
                                             >
                                               {tabKey}
@@ -1247,8 +1247,8 @@ export default function LegacyApp() {
                           </div>
 
                           {/* Add Member Form */}
-                          <div className="p-4 rounded-xl border border-stone-800 bg-stone-900 space-y-3">
-                            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+                          <div className="p-4 rounded-xl border border-stone-250 dark:border-stone-800 bg-stone-55 dark:bg-stone-900 space-y-3">
+                            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-850 dark:text-stone-100">
                               Adicionar Novo Membro
                             </h4>
                             <div className="space-y-2">
@@ -1257,26 +1257,26 @@ export default function LegacyApp() {
                                 value={newMemberName}
                                 onChange={e => setNewMemberName(e.target.value)}
                                 placeholder="Nome"
-                                className="mach-input w-full bg-stone-955 border-stone-800 text-white"
+                                className="mach-input w-full"
                               />
                               <input
                                 type="email"
                                 value={newMemberEmail}
                                 onChange={e => setNewMemberEmail(e.target.value)}
                                 placeholder="email@equipe.com"
-                                className="mach-input w-full bg-stone-955 border-stone-800 text-white"
+                                className="mach-input w-full"
                               />
                               <input
                                 type="password"
                                 value={newMemberPassword}
                                 onChange={e => setNewMemberPassword(e.target.value)}
                                 placeholder="Senha temporária"
-                                className="mach-input w-full bg-stone-955 border-stone-800 text-white"
+                                className="mach-input w-full"
                               />
                               <select
                                 value={newMemberRole}
                                 onChange={e => setNewMemberRole(e.target.value as ProjectRole)}
-                                className="mach-input w-full cursor-pointer bg-stone-955 border-stone-800 text-white text-xs"
+                                className="mach-input w-full cursor-pointer text-xs"
                               >
                                 <option value="member">Membro</option>
                                 <option value="technical_lead">Técnico</option>

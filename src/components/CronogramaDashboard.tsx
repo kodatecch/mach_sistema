@@ -39,10 +39,99 @@ import { exportToExcel } from '../utils/excelExport';
 import ReactFlow, { 
   Background, 
   Controls, 
-  MiniMap 
+  MiniMap,
+  Handle,
+  Position,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
+  MarkerType,
+  NodeChange,
+  applyNodeChanges
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { WbsItem, Task, Project, ProjectMember, User, TaskDependency, OrgConfig } from '../types';
+
+export type CanvasShape = 'rectangle' | 'diamond' | 'rounded-rectangle' | 'circle';
+
+// Custom Node Component for CANVAS
+const CustomCanvasNode = ({ id, data, selected }: any) => {
+  const shape = data.shape || 'rectangle';
+  const color = data.color || '#dc2626';
+  const label = data.label || '';
+  const isCritical = data.isCritical;
+  const status = data.status;
+  const startDate = data.startDate;
+  const endDate = data.endDate;
+  const isMilestone = data.isMilestone;
+  const totalFloat = data.totalFloat;
+  const type = data.type || 'free';
+
+  let shapeClass = "w-44 h-24 flex flex-col justify-center items-center p-3 text-center border-2 transition-all relative";
+  let contentStyle = "w-full h-full flex flex-col justify-center items-center overflow-hidden";
+
+  if (shape === 'circle') {
+    shapeClass = "rounded-full w-32 h-32 flex flex-col justify-center items-center p-3 text-center border-2 transition-all relative";
+  } else if (shape === 'rounded-rectangle') {
+    shapeClass = "rounded-2xl w-44 h-24 flex flex-col justify-center items-center p-3 text-center border-2 transition-all relative";
+  } else if (shape === 'diamond') {
+    shapeClass = "rotate-45 w-32 h-32 flex flex-col justify-center items-center p-3 text-center border-2 transition-all relative";
+    contentStyle = "w-full h-full flex flex-col justify-center items-center -rotate-45 overflow-hidden";
+  } else {
+    shapeClass = "rounded w-44 h-24 flex flex-col justify-center items-center p-3 text-center border-2 transition-all relative";
+  }
+
+  const borderStyle = selected 
+    ? 'ring-4 ring-offset-2 ring-blue-500 scale-105 shadow-2xl z-20 bg-white dark:bg-stone-900' 
+    : 'shadow-md border-opacity-90 bg-white dark:bg-stone-900';
+
+  return (
+    <div 
+      className={`${shapeClass} ${borderStyle}`}
+      style={{
+        backgroundColor: undefined,
+        borderColor: color,
+        color: 'inherit'
+      }}
+    >
+      <Handle type="target" position={Position.Top} id="t" style={{ background: color, width: 8, height: 8 }} />
+      <Handle type="source" position={Position.Bottom} id="b" style={{ background: color, width: 8, height: 8 }} />
+      <Handle type="target" position={Position.Left} id="l" style={{ background: color, width: 8, height: 8 }} />
+      <Handle type="source" position={Position.Right} id="r" style={{ background: color, width: 8, height: 8 }} />
+
+      <div className={contentStyle}>
+        {type === 'task' ? (
+          <div className="flex flex-col text-left w-full h-full justify-between text-[9px] font-mono leading-tight">
+            <div className="flex justify-between items-center w-full">
+              <span className={`text-[7px] font-sans px-1 rounded text-white`} style={{ backgroundColor: color }}>
+                {status === 'todo' ? 'PENDENTE' : status === 'in_progress' ? 'EXECUÇÃO' : 'CONCLUÍDO'}
+              </span>
+              {isCritical && <span className="text-[7px] bg-red-650 text-white px-1 rounded uppercase font-black">CRÍTICO</span>}
+            </div>
+            <div className="font-extrabold text-[10px] truncate max-w-[150px] my-1 text-stone-800 dark:text-stone-100">{label}</div>
+            <div className="text-[8px] text-stone-500 dark:text-stone-400">📅 {startDate}</div>
+            <div className="flex justify-between items-center mt-1 text-[7.5px] text-stone-400">
+              <span>Folga: {totalFloat}d</span>
+              {isMilestone && <span className="text-orange-500 font-extrabold">◆ MARCO</span>}
+            </div>
+          </div>
+        ) : (
+          <div className="font-bold text-[10px] leading-tight break-words max-w-[110px] text-stone-800 dark:text-stone-100">
+            {label}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const nodeTypes = {
+  canvasNode: CustomCanvasNode
+};
+
 
 interface CronogramaDashboardProps {
   activeProject: Project;
@@ -688,6 +777,405 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
   });
 
   // -----------------------------------------------------------------
+  // CANVAS HOOKS, STATES AND ACTIONS
+  // -----------------------------------------------------------------
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  
+  const [canvasPreset, setCanvasPreset] = useState<'precedence' | 'process' | 'wbs'>(() => {
+    return (localStorage.getItem(`mach_canvas_preset_${activeProject.id}`) as any) || 'precedence';
+  });
+
+  const [localNodes, setLocalNodes, onNodesChange] = useNodesState([]);
+  const [localEdges, setLocalEdges, onEdgesChange] = useEdgesState([]);
+
+  // Sync canvasPreset on activeProject.id change
+  React.useEffect(() => {
+    const savedPreset = localStorage.getItem(`mach_canvas_preset_${activeProject.id}`) as any;
+    setCanvasPreset(savedPreset || 'precedence');
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+  }, [activeProject.id]);
+
+  // Load preset or cached values
+  const changePreset = (preset: 'precedence' | 'process' | 'wbs') => {
+    setCanvasPreset(preset);
+    localStorage.setItem(`mach_canvas_preset_${activeProject.id}`, preset);
+    setSelectedNodeId(null);
+    setSelectedEdgeId(null);
+  };
+
+  // Sync nodes & edges based on active preset and dynamic tasks/dependencies
+  React.useEffect(() => {
+    if (canvasPreset === 'precedence') {
+      const savedPositions = JSON.parse(localStorage.getItem(`mach_canvas_positions_${activeProject.id}`) || '{}');
+      const savedCustoms = JSON.parse(localStorage.getItem(`mach_canvas_customizations_${activeProject.id}`) || '{}');
+
+      const nodes = tasks.map((task, index) => {
+        const custom = savedCustoms[task.id] || {};
+        const pos = savedPositions[task.id] || { x: 100 + (index % 4) * 240, y: 80 + Math.floor(index / 4) * 180 };
+        return {
+          id: task.id,
+          type: 'canvasNode',
+          position: pos,
+          data: {
+            type: 'task',
+            label: task.name,
+            shape: custom.shape || 'rectangle',
+            color: custom.color || (task.isUrgent && task.isImportant ? '#ef4444' : '#3b82f6'),
+            status: task.status,
+            startDate: task.startDate,
+            endDate: task.endDate,
+            isCritical: task.isCritical,
+            totalFloat: task.totalFloat,
+            isMilestone: task.durationExpected === 0
+          }
+        };
+      });
+
+      const savedEdgeCustoms = JSON.parse(localStorage.getItem(`mach_canvas_edge_customs_${activeProject.id}`) || '{}');
+      const edges = dependencies
+        .filter(dep => tasks.some(t => t.id === dep.taskId) && tasks.some(t => t.id === dep.dependsOnTaskId))
+        .map(dep => {
+          const custom = savedEdgeCustoms[dep.id] || {};
+          const color = custom.color || '#52525b';
+          return {
+            id: dep.id,
+            source: dep.dependsOnTaskId,
+            target: dep.taskId,
+            type: custom.type || 'smoothstep',
+            style: {
+              stroke: color,
+              strokeDasharray: custom.dashed ? '5 5' : undefined
+            },
+            markerEnd: custom.arrow !== false ? {
+              type: MarkerType.ArrowClosed,
+              color: color
+            } : undefined
+          };
+        });
+
+      setLocalNodes(nodes);
+      setLocalEdges(edges);
+    } else if (canvasPreset === 'process') {
+      const storedNodes = localStorage.getItem(`mach_canvas_nodes_${activeProject.id}_process`);
+      const storedEdges = localStorage.getItem(`mach_canvas_edges_${activeProject.id}_process`);
+
+      if (storedNodes && storedEdges) {
+        setLocalNodes(JSON.parse(storedNodes));
+        setLocalEdges(JSON.parse(storedEdges));
+      } else {
+        const initialNodes = [
+          {
+            id: 'process-start',
+            type: 'canvasNode',
+            position: { x: 100, y: 150 },
+            data: { type: 'free', label: 'Início', shape: 'circle', color: '#10b981' }
+          },
+          {
+            id: 'process-step1',
+            type: 'canvasNode',
+            position: { x: 280, y: 150 },
+            data: { type: 'free', label: 'Fresar Protótipo CNC', shape: 'rectangle', color: '#3b82f6' }
+          },
+          {
+            id: 'process-decision',
+            type: 'canvasNode',
+            position: { x: 500, y: 110 },
+            data: { type: 'free', label: 'Aprovação da Qualidade?', shape: 'diamond', color: '#eab308' }
+          },
+          {
+            id: 'process-rework',
+            type: 'canvasNode',
+            position: { x: 500, y: 320 },
+            data: { type: 'free', label: 'Refazer Usinagem', shape: 'rounded-rectangle', color: '#ef4444' }
+          },
+          {
+            id: 'process-end',
+            type: 'canvasNode',
+            position: { x: 740, y: 150 },
+            data: { type: 'free', label: 'Fim', shape: 'circle', color: '#6b7280' }
+          }
+        ];
+
+        const initialEdges = [
+          {
+            id: 'pe-1',
+            source: 'process-start',
+            target: 'process-step1',
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+            style: { stroke: '#52525b' }
+          },
+          {
+            id: 'pe-2',
+            source: 'process-step1',
+            target: 'process-decision',
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+            style: { stroke: '#52525b' }
+          },
+          {
+            id: 'pe-3',
+            source: 'process-decision',
+            target: 'process-end',
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+            style: { stroke: '#52525b' },
+            label: 'Sim'
+          },
+          {
+            id: 'pe-4',
+            source: 'process-decision',
+            target: 'process-rework',
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+            style: { stroke: '#52525b' },
+            label: 'Não'
+          },
+          {
+            id: 'pe-5',
+            source: 'process-rework',
+            target: 'process-step1',
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+            style: { stroke: '#52525b' }
+          }
+        ];
+
+        localStorage.setItem(`mach_canvas_nodes_${activeProject.id}_process`, JSON.stringify(initialNodes));
+        localStorage.setItem(`mach_canvas_edges_${activeProject.id}_process`, JSON.stringify(initialEdges));
+        setLocalNodes(initialNodes);
+        setLocalEdges(initialEdges);
+      }
+    } else if (canvasPreset === 'wbs') {
+      const storedNodes = localStorage.getItem(`mach_canvas_nodes_${activeProject.id}_wbs`);
+      const storedEdges = localStorage.getItem(`mach_canvas_edges_${activeProject.id}_wbs`);
+
+      if (storedNodes && storedEdges) {
+        setLocalNodes(JSON.parse(storedNodes));
+        setLocalEdges(JSON.parse(storedEdges));
+      } else {
+        const nodes: any[] = [];
+        const edges: any[] = [];
+
+        // Root project node
+        nodes.push({
+          id: 'wbs-root',
+          type: 'canvasNode',
+          position: { x: 450, y: 50 },
+          data: { type: 'free', label: activeProject.name, shape: 'rounded-rectangle', color: '#8b5cf6' }
+        });
+
+        const lvl1 = wbsItems.filter((w: any) => w.parentId === null);
+        lvl1.forEach((item1: any, i1: number) => {
+          const x1 = 150 + i1 * 320;
+          const y1 = 200;
+          nodes.push({
+            id: item1.id,
+            type: 'canvasNode',
+            position: { x: x1, y: y1 },
+            data: { type: 'free', label: `${item1.code} ${item1.name}`, shape: 'rectangle', color: '#3b82f6' }
+          });
+
+          edges.push({
+            id: `wbs-edge-root-${item1.id}`,
+            source: 'wbs-root',
+            target: item1.id,
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+            style: { stroke: '#52525b' }
+          });
+
+          const lvl2 = wbsItems.filter((w: any) => w.parentId === item1.id);
+          lvl2.forEach((item2: any, i2: number) => {
+            const x2 = x1 - 100 + i2 * 200;
+            const y2 = 360;
+            nodes.push({
+              id: item2.id,
+              type: 'canvasNode',
+              position: { x: x2, y: y2 },
+              data: { type: 'free', label: `${item2.code} ${item2.name}`, shape: 'rounded-rectangle', color: '#10b981' }
+            });
+
+            edges.push({
+              id: `wbs-edge-${item1.id}-${item2.id}`,
+              source: item1.id,
+              target: item2.id,
+              type: 'smoothstep',
+              markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+              style: { stroke: '#52525b' }
+            });
+          });
+        });
+
+        localStorage.setItem(`mach_canvas_nodes_${activeProject.id}_wbs`, JSON.stringify(nodes));
+        localStorage.setItem(`mach_canvas_edges_${activeProject.id}_wbs`, JSON.stringify(edges));
+        setLocalNodes(nodes);
+        setLocalEdges(edges);
+      }
+    }
+  }, [canvasPreset, activeProject.id, tasks, dependencies, wbsItems]);
+
+  // Persist nodes on update
+  React.useEffect(() => {
+    if (canvasPreset !== 'precedence' && localNodes.length > 0) {
+      localStorage.setItem(`mach_canvas_nodes_${activeProject.id}_${canvasPreset}`, JSON.stringify(localNodes));
+    }
+  }, [localNodes, canvasPreset, activeProject.id]);
+
+  // Persist edges on update
+  React.useEffect(() => {
+    if (canvasPreset !== 'precedence' && localEdges.length > 0) {
+      localStorage.setItem(`mach_canvas_edges_${activeProject.id}_${canvasPreset}`, JSON.stringify(localEdges));
+    }
+  }, [localEdges, canvasPreset, activeProject.id]);
+
+  const onNodesChangeHandler = React.useCallback((changes: NodeChange[]) => {
+    setLocalNodes((nds) => {
+      const updated = applyNodeChanges(changes, nds);
+      
+      // Save changes
+      if (canvasPreset === 'precedence') {
+        const savedPositions = JSON.parse(localStorage.getItem(`mach_canvas_positions_${activeProject.id}`) || '{}');
+        updated.forEach((n) => {
+          if (n.position) {
+            savedPositions[n.id] = n.position;
+          }
+        });
+        localStorage.setItem(`mach_canvas_positions_${activeProject.id}`, JSON.stringify(savedPositions));
+      }
+      return updated;
+    });
+  }, [canvasPreset, activeProject.id, setLocalNodes]);
+
+  const onConnectHandler = React.useCallback((params: Connection) => {
+    setLocalEdges((eds) => {
+      const newEdge = {
+        ...params,
+        id: `free-edge-${Date.now()}`,
+        type: 'smoothstep',
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#52525b' },
+        style: { stroke: '#52525b' }
+      } as Edge;
+      const updated = addEdge(newEdge, eds);
+      return updated;
+    });
+  }, [canvasPreset, activeProject.id, setLocalEdges]);
+
+  const updateSelectedNodeStyle = (customs: { shape?: CanvasShape; color?: string; label?: string }) => {
+    if (!selectedNodeId) return;
+
+    setLocalNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === selectedNodeId) {
+          const updatedData = { ...node.data, ...customs };
+          return { ...node, data: updatedData };
+        }
+        return node;
+      })
+    );
+
+    if (canvasPreset === 'precedence') {
+      const savedCustoms = JSON.parse(localStorage.getItem(`mach_canvas_customizations_${activeProject.id}`) || '{}');
+      savedCustoms[selectedNodeId] = {
+        ...(savedCustoms[selectedNodeId] || {}),
+        ...customs
+      };
+      localStorage.setItem(`mach_canvas_customizations_${activeProject.id}`, JSON.stringify(savedCustoms));
+    }
+  };
+
+  const updateSelectedEdgeStyle = (customs: { type?: string; dashed?: boolean; arrow?: boolean; color?: string }) => {
+    if (!selectedEdgeId) return;
+
+    setLocalEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.id === selectedEdgeId) {
+          const updated: any = { ...edge };
+          if (customs.type) updated.type = customs.type;
+          
+          const strokeColor = customs.color !== undefined ? customs.color : (edge.style?.stroke || '#52525b');
+          const isDashed = customs.dashed !== undefined ? customs.dashed : !!edge.style?.strokeDasharray;
+          const hasArrow = customs.arrow !== undefined ? customs.arrow : !!edge.markerEnd;
+
+          updated.style = {
+            ...edge.style,
+            stroke: strokeColor,
+            strokeDasharray: isDashed ? '5 5' : undefined
+          };
+
+          updated.markerEnd = hasArrow ? {
+            type: MarkerType.ArrowClosed,
+            color: strokeColor
+          } : undefined;
+
+          return updated;
+        }
+        return edge;
+      })
+    );
+
+    if (canvasPreset === 'precedence') {
+      const savedEdgeCustoms = JSON.parse(localStorage.getItem(`mach_canvas_edge_customs_${activeProject.id}`) || '{}');
+      savedEdgeCustoms[selectedEdgeId] = {
+        ...(savedEdgeCustoms[selectedEdgeId] || {}),
+        ...customs
+      };
+      localStorage.setItem(`mach_canvas_edge_customs_${activeProject.id}`, JSON.stringify(savedEdgeCustoms));
+    }
+  };
+
+  const handleAddFreeNode = () => {
+    const newNodeId = `free-node-${Date.now()}`;
+    const newNode = {
+      id: newNodeId,
+      type: 'canvasNode',
+      position: { x: 250, y: 150 },
+      data: {
+        type: 'free',
+        label: 'Novo Bloco',
+        shape: 'rounded-rectangle' as CanvasShape,
+        color: '#3b82f6'
+      }
+    };
+    setLocalNodes((nds) => [...nds, newNode]);
+    setSelectedNodeId(newNodeId);
+    setSelectedEdgeId(null);
+  };
+
+  const handleClearCanvas = () => {
+    if (window.confirm('Deseja realmente limpar todo o Canvas?')) {
+      if (canvasPreset === 'precedence') {
+        localStorage.removeItem(`mach_canvas_positions_${activeProject.id}`);
+        localStorage.removeItem(`mach_canvas_customizations_${activeProject.id}`);
+        localStorage.removeItem(`mach_canvas_edge_customs_${activeProject.id}`);
+        setCanvasPreset('precedence');
+      } else {
+        setLocalNodes([]);
+        setLocalEdges([]);
+        localStorage.removeItem(`mach_canvas_nodes_${activeProject.id}_${canvasPreset}`);
+        localStorage.removeItem(`mach_canvas_edges_${activeProject.id}_${canvasPreset}`);
+      }
+      setSelectedNodeId(null);
+      setSelectedEdgeId(null);
+    }
+  };
+
+  const deleteSelectedNode = () => {
+    if (!selectedNodeId) return;
+    setLocalNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
+    setLocalEdges((eds) => eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId));
+    setSelectedNodeId(null);
+  };
+
+  const deleteSelectedEdge = () => {
+    if (!selectedEdgeId) return;
+    setLocalEdges((eds) => eds.filter((e) => e.id !== selectedEdgeId));
+    setSelectedEdgeId(null);
+  };
+
+  // -----------------------------------------------------------------
   // 3. WBS ACTIONS
   // -----------------------------------------------------------------
   const handleOpenAddWbs = (parentId?: string | null) => {
@@ -1270,11 +1758,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
               activeSubTab === 'flow' 
                 ? 'border-red-505 text-white bg-stone-900/40' 
-                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                : 'border-transparent text-stone-400 hover:text-stone-900 dark:hover:text-white hover:bg-stone-900/20'
             }`}
           >
             <Workflow className="w-4 h-4 text-stone-400" />
-            Fluxograma de Precedência
+            CANVAS
           </button>
         )}
       </div>
@@ -2234,101 +2722,289 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         );
       })()}
 
-      {/* =============================================================
-          SUB-TAB DIALECT: PRECEDENCE FLOWCHART (REACTFLOW)
-          ============================================================= */}
       {activeSubTab === 'flow' && (() => {
-        // Compute elements dynamically
-        const { nodes, edges } = getFlowElements(tasks, dependencies, annotations);
-
-        const handleAddAnnotation = (e: React.FormEvent) => {
-          e.preventDefault();
-          if (newAnnotationText.trim()) {
-            const newAnn = {
-              id: `ann-${Date.now()}`,
-              text: newAnnotationText.trim(),
-              position: { x: 100, y: 350 }
-            };
-            mutateAnnotations([...annotations, newAnn]);
-            setNewAnnotationText('');
-          }
-        };
-
-        const handleClearAnnotations = () => {
-          if (confirm('Deseja limpar todas as anotações do diagrama?')) {
-            mutateAnnotations([]);
-          }
-        };
-
         return (
           <div className="space-y-4 font-mono text-xs select-text">
-            {/* Annotation controls pane */}
+            {/* CANVAS CONTROLS */}
             <div className="bg-stone-900 border border-stone-850 p-4 rounded-lg flex flex-wrap items-center justify-between gap-4">
-              <form onSubmit={handleAddAnnotation} className="flex items-center gap-2 flex-grow max-w-lg">
-                <input
-                  type="text"
-                  required
-                  placeholder="Inserir anotação livre ou indicador de decisão..."
-                  value={newAnnotationText}
-                  onChange={e => setNewAnnotationText(e.target.value)}
-                  className="flex-grow bg-white dark:bg-stone-950 border border-stone-250 dark:border-stone-800 hover:border-stone-350 dark:hover:border-stone-750 text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-600 focus:border-red-505 dark:focus:border-red-505 text-xs px-3 py-1.5 rounded outline-none"
-                />
-                <button
-                  type="submit"
-                  className="mach-button-primary py-1.5 px-4 rounded text-white font-extrabold uppercase shrink-0 text-[10px]"
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] uppercase font-black tracking-wider text-stone-400">Preset do Canvas:</span>
+                <select
+                  value={canvasPreset}
+                  onChange={(e) => changePreset(e.target.value as any)}
+                  className="mach-input py-1 px-3 text-xs bg-white dark:bg-stone-955 font-bold border border-stone-250 dark:border-stone-800 text-stone-850 dark:text-stone-100 rounded cursor-pointer max-w-xs"
                 >
-                  Criar Nota
-                </button>
-              </form>
+                  <option value="precedence">Fluxograma de Precedência (Dinâmico)</option>
+                  <option value="process">Fluxograma de Processo (Clássico)</option>
+                  <option value="wbs">WBS Visual (EAP Árvore)</option>
+                </select>
+              </div>
 
-              {annotations.length > 0 && (
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={handleClearAnnotations}
-                  className="text-stone-500 hover:text-red-400 font-bold uppercase text-[10px] bg-stone-950 border border-stone-800 px-3 py-1.5 rounded hover:border-stone-750 transition"
+                  onClick={handleAddFreeNode}
+                  className="mach-button-primary py-1.5 px-4 rounded text-white font-extrabold uppercase shrink-0 text-[10px] flex items-center gap-1.5 cursor-pointer"
                 >
-                  Limpar Notas
+                  <Plus className="w-3.5 h-3.5" /> Adicionar Bloco Livre
                 </button>
-              )}
+                <button
+                  onClick={handleClearCanvas}
+                  className="text-stone-500 hover:text-red-400 font-bold uppercase text-[10px] bg-stone-955 border border-stone-800 px-3 py-1.5 rounded hover:border-stone-750 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  Limpar Canvas
+                </button>
+              </div>
             </div>
 
             {/* React Flow Board Wrapper */}
             <div className="bg-stone-950 border border-stone-850 rounded-lg overflow-hidden relative" style={{ height: '560px' }}>
               <ReactFlow
-                nodes={nodes}
-                edges={edges}
+                nodes={localNodes}
+                edges={localEdges}
+                onNodesChange={onNodesChangeHandler}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnectHandler}
+                onNodeClick={(e, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(null); }}
+                onEdgeClick={(e, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(null); }}
+                onPaneClick={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }}
+                nodeTypes={nodeTypes}
                 fitView
                 minZoom={0.2}
                 maxZoom={1.5}
                 className="font-mono text-xs"
               >
                 <Background color="#333" gap={16} />
-                <Controls className="bg-stone-900 border border-stone-800 text-white rounded outline-none p-1 fill-white [&_button]:bg-stone-950 [&_button]:border-stone-800" />
+                <Controls className="bg-stone-900 border border-stone-800 rounded outline-none p-1" />
                 <MiniMap 
-                  nodeStrokeColor={(n) => n.id.startsWith('ann') ? '#eab308' : '#333'}
-                  nodeColor={(n) => n.id.startsWith('ann') ? '#eab308' : '#111'}
+                  nodeStrokeColor={(n) => n.data?.color || '#333'}
+                  nodeColor={(n) => n.data?.color || '#111'}
                   maskColor="rgba(0, 0, 0, 0.7)"
                   className="bg-stone-900 border border-stone-800 rounded hidden md:block" 
                 />
               </ReactFlow>
 
               {/* Float guide panel - repositioned to top-4 right-4 */}
-              <div className="absolute top-4 right-4 bg-stone-900/90 border border-stone-800 backdrop-blur p-3 rounded text-[10px] text-stone-300 space-y-1.5 pointer-events-none z-10 font-bold">
+              <div className="absolute top-4 right-4 bg-stone-900/90 border border-stone-800 backdrop-blur p-3 rounded text-[10px] text-stone-350 dark:text-stone-300 space-y-1.5 pointer-events-none z-10 font-bold">
                 <div className="text-[10px] uppercase font-black tracking-wider text-red-505 select-none text-center border-b border-stone-800 pb-1 mb-1">
-                  Guia de Fluxograma
+                  Guia de Canvas
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-1.5 bg-red-500 animate-pulse rounded" />
-                  <span>Caminho Crítico (Animação ativa)</span>
+                  <span>Caminho Crítico (Tarefas)</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-1.5 bg-zinc-650 rounded" />
-                  <span>Precedências Normais (Sem folga zero)</span>
+                  <span className="w-3.5 h-1.5 bg-zinc-500 rounded" />
+                  <span>Caminhos Normais</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3.5 h-3 bg-stone-900 border border-yellow-500/40 rounded" />
-                  <span>Anotação de Engenharia Colada</span>
+                  <span>Blocos Livres / Notas</span>
                 </div>
               </div>
+
+              {/* Quick Styling Panel */}
+              {(selectedNodeId || selectedEdgeId) && (
+                <div className="absolute bottom-4 left-4 bg-stone-900/95 dark:bg-stone-950/95 border border-stone-250 dark:border-stone-800 p-4 rounded-lg shadow-xl z-20 text-[10px] space-y-3 font-mono max-w-sm pointer-events-auto">
+                  <div className="flex justify-between items-center border-b border-stone-200 dark:border-stone-800 pb-2 mb-2">
+                    <span className="font-extrabold uppercase text-stone-900 dark:text-stone-100">
+                      {selectedNodeId ? 'Estilizar Bloco' : 'Estilizar Conexão'}
+                    </span>
+                    <button 
+                      onClick={() => { setSelectedNodeId(null); setSelectedEdgeId(null); }}
+                      className="text-stone-450 hover:text-stone-900 dark:hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {selectedNodeId && (() => {
+                    const nodeObj = localNodes.find(n => n.id === selectedNodeId);
+                    if (!nodeObj) return null;
+                    const isTask = nodeObj.data?.type === 'task';
+                    const shape = nodeObj.data?.shape || 'rectangle';
+                    const color = nodeObj.data?.color || '#3b82f6';
+                    const label = nodeObj.data?.label || '';
+
+                    return (
+                      <div className="space-y-3.5 text-stone-700 dark:text-stone-300">
+                        {!isTask && (
+                          <div className="space-y-1">
+                            <label className="mach-label text-stone-450">Texto do Bloco</label>
+                            <input
+                              type="text"
+                              value={typeof label === 'string' ? label : ''}
+                              onChange={(e) => updateSelectedNodeStyle({ label: e.target.value })}
+                              className="mach-input w-full bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100"
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <label className="mach-label text-stone-450">Formato Geométrico</label>
+                          <div className="grid grid-cols-4 gap-1.5 text-center font-bold">
+                            {[
+                              { key: 'rectangle', label: 'Retâng.' },
+                              { key: 'rounded-rectangle', label: 'Ondul.' },
+                              { key: 'diamond', label: 'Losan.' },
+                              { key: 'circle', label: 'Círc.' }
+                            ].map(opt => (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => updateSelectedNodeStyle({ shape: opt.key as any })}
+                                className={`p-1 border rounded text-[8px] cursor-pointer transition-colors ${
+                                  shape === opt.key 
+                                    ? 'border-red-500 bg-red-500/10 text-stone-900 dark:text-stone-100' 
+                                    : 'border-stone-200 dark:border-stone-800 text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="mach-label text-stone-450">Cor do Elemento</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { key: '#ef4444', label: 'Vermelho' },
+                              { key: '#3b82f6', label: 'Azul' },
+                              { key: '#10b981', label: 'Verde' },
+                              { key: '#eab308', label: 'Amarelo' },
+                              { key: '#06b6d4', label: 'Ciano' },
+                              { key: '#a855f7', label: 'Roxo' },
+                              { key: '#6b7280', label: 'Cinza' },
+                              { key: '#f97316', label: 'Laranja' }
+                            ].map(cOpt => (
+                              <button
+                                key={cOpt.key}
+                                type="button"
+                                onClick={() => updateSelectedNodeStyle({ color: cOpt.key })}
+                                className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                                  color === cOpt.key ? 'border-stone-850 dark:border-stone-100 scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                                }`}
+                                style={{ backgroundColor: cOpt.key }}
+                                title={cOpt.label}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        {!isTask && (
+                          <button
+                            type="button"
+                            onClick={deleteSelectedNode}
+                            className="mach-button-primary bg-red-650 hover:bg-red-750 w-full flex items-center justify-center gap-1.5 py-1.5 text-[9px] cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Excluir Bloco
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {selectedEdgeId && (() => {
+                    const edgeObj = localEdges.find(e => e.id === selectedEdgeId);
+                    if (!edgeObj) return null;
+                    const type = edgeObj.type || 'smoothstep';
+                    const color = edgeObj.style?.stroke || '#52525b';
+                    const dashed = !!edgeObj.style?.strokeDasharray;
+                    const hasArrow = !!edgeObj.markerEnd;
+
+                    return (
+                      <div className="space-y-3.5 text-stone-750 dark:text-stone-300">
+                        <div className="space-y-1">
+                          <label className="mach-label text-stone-450">Tipo de Linha</label>
+                          <div className="grid grid-cols-3 gap-1.5 text-center font-bold">
+                            {[
+                              { key: 'straight', label: 'Reta' },
+                              { key: 'default', label: 'Curva' },
+                              { key: 'smoothstep', label: 'Ortog.' }
+                            ].map(opt => (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => updateSelectedEdgeStyle({ type: opt.key })}
+                                className={`p-1.5 border rounded text-[9px] cursor-pointer transition-colors ${
+                                  type === opt.key 
+                                    ? 'border-red-500 bg-red-500/10 text-stone-900 dark:text-stone-100' 
+                                    : 'border-stone-200 dark:border-stone-800 text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="mach-label text-stone-450">Tracejado</label>
+                            <button
+                              type="button"
+                              onClick={() => updateSelectedEdgeStyle({ dashed: !dashed })}
+                              className={`p-1 border rounded text-[9px] cursor-pointer transition-colors w-full font-bold ${
+                                dashed 
+                                  ? 'border-red-500 bg-red-500/10 text-stone-900 dark:text-stone-100' 
+                                  : 'border-stone-200 dark:border-stone-800 text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                              }`}
+                            >
+                              {dashed ? 'Sim' : 'Não'}
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="mach-label text-stone-450">Ponta com Seta</label>
+                            <button
+                              type="button"
+                              onClick={() => updateSelectedEdgeStyle({ arrow: !hasArrow })}
+                              className={`p-1 border rounded text-[9px] cursor-pointer transition-colors w-full font-bold ${
+                                hasArrow 
+                                  ? 'border-red-505 bg-red-500/10 text-stone-900 dark:text-stone-100' 
+                                  : 'border-stone-200 dark:border-stone-800 text-stone-400 hover:text-stone-900 dark:hover:text-white'
+                              }`}
+                            >
+                              {hasArrow ? 'Sim' : 'Não'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="mach-label text-stone-450">Cor da Conexão</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { key: '#52525b', label: 'Padrão' },
+                              { key: '#ef4444', label: 'Vermelho' },
+                              { key: '#3b82f6', label: 'Azul' },
+                              { key: '#10b981', label: 'Verde' },
+                              { key: '#eab308', label: 'Amarelo' }
+                            ].map(cOpt => (
+                              <button
+                                key={cOpt.key}
+                                type="button"
+                                onClick={() => updateSelectedEdgeStyle({ color: cOpt.key })}
+                                className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                                  color === cOpt.key ? 'border-stone-850 dark:border-stone-100 scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                                }`}
+                                style={{ backgroundColor: cOpt.key }}
+                                title={cOpt.label}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={deleteSelectedEdge}
+                          className="mach-button-primary bg-red-650 hover:bg-red-750 w-full flex items-center justify-center gap-1.5 py-1.5 text-[9px] cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Excluir Conexão
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         );
