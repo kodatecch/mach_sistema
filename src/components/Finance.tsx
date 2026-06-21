@@ -811,9 +811,6 @@ export default function Finance({ activeProject, activeUser, memberships, users,
           <h1 className="text-2xl font-display font-black uppercase text-white tracking-wide">
             Orçamento & Controle Monetário
           </h1>
-          <p className="text-xs text-stone-400 mt-1 max-w-2xl leading-relaxed">
-            Painel dinâmico da equipe <span className="text-white font-semibold">Mach Racing</span>. Planeje a aquisição de recursos físicos, selecione cotações vencedoras, teste cenários de custos pessimistas e controle o livro de fluxo de caixa operacional.
-          </p>
         </div>
 
         {/* Global Floating Counters */}
@@ -891,7 +888,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       placeholder="ex. Bobina de Ignição MSD Blaster"
                       value={resForm.name}
                       onChange={e => setResForm({...resForm, name: e.target.value})}
-                      className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-[#DC2626]"
+                      className="mach-input"
                     />
                   </div>
 
@@ -905,7 +902,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         min="1"
                         value={resForm.quantity}
                         onChange={e => setResForm({...resForm, quantity: Number(e.target.value)})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input"
                       />
                     </div>
                     <div>
@@ -916,7 +913,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         required
                         value={resForm.idealDate}
                         onChange={e => setResForm({...resForm, idealDate: e.target.value})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white font-mono focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input font-mono"
                       />
                     </div>
                   </div>
@@ -927,7 +924,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       id="res-owner-select"
                       value={resForm.owner}
                       onChange={e => setResForm({...resForm, owner: e.target.value})}
-                      className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                      className="mach-input"
                     >
                       {users.map(u => (
                         <option key={u.id} value={u.name}>{u.name}</option>
@@ -944,7 +941,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         id="res-origin-select"
                         value={resForm.origin}
                         onChange={e => setResForm({...resForm, origin: e.target.value as any})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input"
                       >
                         <option value="sponsorship">Patrocínio Direto</option>
                         <option value="institutional">Verba Univ.</option>
@@ -958,7 +955,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         id="res-category-select"
                         value={resForm.category}
                         onChange={e => setResForm({...resForm, category: e.target.value})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input"
                       >
                         <option value="Materiais">Materiais</option>
                         <option value="Usinagem">Usinagem</option>
@@ -1151,7 +1148,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                               placeholder="ex. Metalúrgica Tubos SRM"
                               value={quoteForm.supplier}
                               onChange={e => setQuoteForm({...quoteForm, supplier: e.target.value})}
-                              className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-[#DC2626]"
+                              className="mach-input"
                             />
                           </div>
 
@@ -1166,7 +1163,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                                 required
                                 value={quoteForm.unitPrice}
                                 onChange={e => setQuoteForm({...quoteForm, unitPrice: Number(e.target.value)})}
-                                className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                                className="mach-input"
                               />
                             </div>
                             <div>
@@ -1178,7 +1175,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                                 required
                                 value={quoteForm.deliveryDays}
                                 onChange={e => setQuoteForm({...quoteForm, deliveryDays: Number(e.target.value)})}
-                                className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                                className="mach-input"
                               />
                             </div>
                           </div>
@@ -1191,7 +1188,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                               rows={3}
                               value={quoteForm.qualityRemarks}
                               onChange={e => setQuoteForm({...quoteForm, qualityRemarks: e.target.value})}
-                              className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                              className="mach-input"
                             />
                           </div>
 
@@ -1309,7 +1306,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                       {/* Completed Workflow Checkpoint suggestion */}
                       {matchingQuotes.some(q => q.isSelected) && (
-                        <div className="bg-[#DC2626]/10 border border-[#DC2626]/40 p-4 rounded mt-6 flex justify-between items-center select-none">
+                        <div className="bg-[#DC2626]/10 border border-[#DC2626]/40 p-4 rounded mt-6 flex flex-col sm:flex-row gap-3 justify-between sm:items-center select-none">
                           <div className="space-y-1">
                             <p className="text-xs font-bold text-white font-mono uppercase tracking-tight">Etapa Concluída: Cotação Selecionada! 🚀</p>
                             <p className="text-[10px] text-stone-400">Pronto para criar uma linha orçamentária sugerindo automaticamente este valor vencedor.</p>
@@ -1319,7 +1316,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                               // Automatically auto-fill or suggest creating on the next tab
                               setActiveSubTab('budget');
                             }}
-                            className="bg-[#DC2626] hover:bg-[#DC2626]/85 text-white font-mono text-[9px] font-bold py-1.5 px-3 rounded flex items-center gap-1 transition cursor-pointer"
+                            className="bg-[#DC2626] hover:bg-[#DC2626]/85 text-white font-mono text-[9px] font-bold py-1.5 px-3 rounded flex items-center justify-center gap-1 transition cursor-pointer shrink-0 whitespace-nowrap w-full sm:w-auto"
                           >
                             Avançar para Previsão <ChevronRight className="w-3.5 h-3.5" />
                           </button>
@@ -1429,7 +1426,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       placeholder="ex. Adesão de filamentos PETG de alto impacto"
                       value={budgetForm.name}
                       onChange={e => setBudgetForm({...budgetForm, name: e.target.value})}
-                      className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-[#DC2626]"
+                      className="mach-input"
                     />
                   </div>
 
@@ -1439,7 +1436,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       id="budget-category"
                       value={budgetForm.category}
                       onChange={e => setBudgetForm({...budgetForm, category: e.target.value})}
-                      className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none"
+                      className="mach-input"
                     >
                       <option value="Materiais">Materiais</option>
                       <option value="Usinagem">Usinagem</option>
@@ -1460,7 +1457,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         required
                         value={budgetForm.quantity}
                         onChange={e => setBudgetForm({...budgetForm, quantity: Number(e.target.value)})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input"
                       />
                     </div>
                     <div>
@@ -1473,7 +1470,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         required
                         value={budgetForm.unitValue}
                         onChange={e => setBudgetForm({...budgetForm, unitValue: Number(e.target.value)})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white font-bold focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input font-bold"
                       />
                     </div>
                   </div>
@@ -1625,7 +1622,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     type="number"
                     value={initialBalance}
                     onChange={e => setInitialBalance(Number(e.target.value))}
-                    className="bg-stone-950 border border-stone-800 text-base font-mono font-bold text-stone-100 max-w-[150px] p-1 rounded focus:outline-none"
+                    className="mach-input text-base font-mono font-bold max-w-[150px] !py-1 !px-2"
                     placeholder="Saldo inicial"
                   />
                   <p className="text-[10px] text-stone-500 font-mono mt-0.5">Editável para calibração</p>
@@ -1729,7 +1726,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         placeholder="ex. Pagamento parcial alumínio carenagem"
                         value={cashFlowForm.description}
                         onChange={e => setCashFlowForm({...cashFlowForm, description: e.target.value})}
-                        className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white placeholder-stone-600 focus:outline-none focus:border-[#DC2626]"
+                        className="mach-input"
                       />
                     </div>
 
@@ -1740,7 +1737,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           id="cf-type"
                           value={cashFlowForm.type}
                           onChange={e => setCashFlowForm({...cashFlowForm, type: e.target.value as any})}
-                          className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                          className="mach-input"
                         >
                           <option value="expense">Despesa (Saída)</option>
                           <option value="revenue">Receita (Entrada)</option>
@@ -1753,7 +1750,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           id="cf-category"
                           value={cashFlowForm.category}
                           onChange={e => setCashFlowForm({...cashFlowForm, category: e.target.value})}
-                          className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none"
+                          className="mach-input"
                         >
                           {/* Matches seeded categories */}
                           <option value="Materials">Materiais</option>
@@ -1779,7 +1776,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           required
                           value={cashFlowForm.amount}
                           onChange={e => setCashFlowForm({...cashFlowForm, amount: Number(e.target.value)})}
-                          className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
+                          className="mach-input"
                         />
                       </div>
 
@@ -1791,7 +1788,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           required
                           value={cashFlowForm.date}
                           onChange={e => setCashFlowForm({...cashFlowForm, date: e.target.value})}
-                          className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white font-mono focus:outline-none focus:border-[#DC2626]"
+                          className="mach-input font-mono"
                         />
                       </div>
                     </div>

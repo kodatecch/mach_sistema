@@ -643,9 +643,6 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
             <ShieldAlert className="w-5.5 h-5.5 text-red-500" />
             Riscos e Monitoramento Sistemático
           </h1>
-          <p className="text-xs text-stone-400 font-sans mt-0.5">
-            Modulo integrador de salvaguardas mecânicas, relatórios semafóricos e logs oficiais de auditoria.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">

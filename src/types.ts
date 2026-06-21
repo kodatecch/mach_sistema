@@ -1,4 +1,4 @@
-export type ProjectRole = 'admin' | 'area_lead' | 'member' | 'mentor' | 'sponsor';
+export type ProjectRole = 'admin' | 'technical_lead' | 'area_lead' | 'member' | 'mentor' | 'sponsor';
 export type ExecutionRegime = 'linear' | 'fast_tracking';
 
 export interface User {
@@ -208,6 +208,15 @@ export interface UserPermissions {
   isAdmin: boolean;
 }
 
+export interface UserTabPermissions {
+  dashboard: boolean;
+  cronograma: boolean;
+  orcamento: boolean;
+  stakeholders: boolean;
+  riscos: boolean;
+  convidar: boolean;
+}
+
 export interface RegulationRule {
   id: string;
   projectId: string;
@@ -247,4 +256,19 @@ export interface Transaction {
   isReconciled: boolean;
 }
 
+export interface OrgConfig {
+  orgName: string;
+  primaryColor: 'red' | 'cyan';
+  theme: 'dark' | 'light';
+  setupComplete: boolean;
+  competitionLevel?: 'regional' | 'nacional' | 'mundial';
+  enableWbs?: boolean;
+  enable5w2h?: boolean;
+  enableKanban?: boolean;
+  enableEisenhower?: boolean;
+  enableGantt?: boolean;
+  enableFlowchart?: boolean;
+}
 
+// Maps memberId → array of projectIds they can see
+export type MemberProjectVisibility = Record<string, string[]>;

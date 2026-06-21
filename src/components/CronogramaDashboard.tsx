@@ -42,7 +42,7 @@ import ReactFlow, {
   MiniMap 
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { WbsItem, Task, Project, ProjectMember, User, TaskDependency } from '../types';
+import { WbsItem, Task, Project, ProjectMember, User, TaskDependency, OrgConfig } from '../types';
 
 interface CronogramaDashboardProps {
   activeProject: Project;
@@ -50,6 +50,7 @@ interface CronogramaDashboardProps {
   memberships: ProjectMember[];
   users: User[];
   permissions?: any;
+  config?: OrgConfig;
 }
 
 // -----------------------------------------------------------------
@@ -459,9 +460,26 @@ function getFlowElements(tasksList: any[], depsList: any[], annotationsList: any
   return { nodes, edges };
 }
 
-export default function CronogramaDashboard({ activeProject, activeUser, memberships, users, permissions }: CronogramaDashboardProps) {
+export default function CronogramaDashboard({ activeProject, activeUser, memberships, users, permissions, config }: CronogramaDashboardProps) {
   const queryClient = useQueryClient();
   const [activeSubTab, setActiveSubTab] = useState<'wbs' | '5w2h' | 'kanban' | 'eisenhower' | 'gantt' | 'flow'>('wbs');
+
+  const enabledTabs = React.useMemo(() => {
+    const tabs = [];
+    if (config?.enableWbs !== false) tabs.push('wbs');
+    if (config?.enable5w2h !== false) tabs.push('5w2h');
+    if (config?.enableKanban !== false) tabs.push('kanban');
+    if (config?.enableEisenhower !== false) tabs.push('eisenhower');
+    if (config?.enableGantt !== false) tabs.push('gantt');
+    if (config?.enableFlowchart !== false) tabs.push('flow');
+    return tabs;
+  }, [config]);
+
+  React.useEffect(() => {
+    if (enabledTabs.length > 0 && !enabledTabs.includes(activeSubTab)) {
+      setActiveSubTab(enabledTabs[0] as any);
+    }
+  }, [enabledTabs, activeSubTab]);
   
   // Create / Edit WBS dialog states
   const [showWbsForm, setShowWbsForm] = useState(false);
@@ -1162,25 +1180,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <SlidersHorizontal className="w-5 h-5 text-red-505" />
             CRONOGRAMA & ENGENHARIA DE PROCESSOS (WBS)
           </h2>
-          <p className="text-[10px] text-stone-400 font-mono uppercase tracking-widest mt-1">
-            Planejamento estruturado por WBS/EAP, Matriz 5W2H e Fluxogramas Operacionais
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* USER AUTONOMY CARD */}
-          <div className="bg-stone-900 border border-stone-800 text-[11px] font-mono rounded px-3 py-1.5 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-            <span className="text-stone-400">Direitos de Acesso:</span>
-            <span className="text-white font-extrabold uppercase">
-              {currentUserRole === 'admin' && 'Administrador (Admin)'}
-              {currentUserRole === 'area_lead' && 'Líder Técnico (Lead)'}
-              {currentUserRole === 'member' && 'Membro do Projeto (Member)'}
-              {currentUserRole === 'mentor' && 'Mentor'}
-              {currentUserRole === 'sponsor' && 'Sponsor'}
-            </span>
-          </div>
-
           <button
             onClick={() => handleOpenAddTask()}
             className="mach-button-primary text-xs font-bold tracking-wider font-mono uppercase flex items-center gap-1.5"
@@ -1192,77 +1194,89 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
       {/* MODULE SUB-TAB NAVIGATION */}
       <div className="flex border-b border-stone-850 gap-1.5 flex-wrap">
-        <button
-          onClick={() => setActiveSubTab('wbs')}
-          className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
-            activeSubTab === 'wbs' 
-              ? 'border-red-505 text-white bg-stone-900/40' 
-              : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
-          }`}
-        >
-          <GitBranch className="w-4 h-4 text-stone-400" />
-          Árvore EAP / WBS
-        </button>
+        {enabledTabs.includes('wbs') && (
+          <button
+            onClick={() => setActiveSubTab('wbs')}
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+              activeSubTab === 'wbs' 
+                ? 'border-red-505 text-white bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+            }`}
+          >
+            <GitBranch className="w-4 h-4 text-stone-400" />
+            Árvore EAP / WBS
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveSubTab('5w2h')}
-          className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
-            activeSubTab === '5w2h' 
-              ? 'border-red-505 text-white bg-stone-900/40' 
-              : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
-          }`}
-        >
-          <Table className="w-4 h-4 text-stone-400" />
-          Planilha 5W2H Inline
-        </button>
+        {enabledTabs.includes('5w2h') && (
+          <button
+            onClick={() => setActiveSubTab('5w2h')}
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+              activeSubTab === '5w2h' 
+                ? 'border-red-505 text-white bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+            }`}
+          >
+            <Table className="w-4 h-4 text-stone-400" />
+            Planilha 5W2H Inline
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveSubTab('kanban')}
-          className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
-            activeSubTab === 'kanban' 
-              ? 'border-red-505 text-white bg-stone-900/40' 
-              : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
-          }`}
-        >
-          <Kanban className="w-4 h-4 text-stone-400" />
-          Quadro Kanban
-        </button>
+        {enabledTabs.includes('kanban') && (
+          <button
+            onClick={() => setActiveSubTab('kanban')}
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+              activeSubTab === 'kanban' 
+                ? 'border-red-505 text-white bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+            }`}
+          >
+            <Kanban className="w-4 h-4 text-stone-400" />
+            Quadro Kanban
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveSubTab('eisenhower')}
-          className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
-            activeSubTab === 'eisenhower' 
-              ? 'border-red-505 text-white bg-stone-900/40' 
-              : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
-          }`}
-        >
-          <Grid className="w-4 h-4 text-stone-400" />
-          Priorização Eisenhower
-        </button>
+        {enabledTabs.includes('eisenhower') && (
+          <button
+            onClick={() => setActiveSubTab('eisenhower')}
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+              activeSubTab === 'eisenhower' 
+                ? 'border-red-505 text-white bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+            }`}
+          >
+            <Grid className="w-4 h-4 text-stone-400" />
+            Priorização Eisenhower
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveSubTab('gantt')}
-          className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
-            activeSubTab === 'gantt' 
-              ? 'border-red-505 text-white bg-stone-900/40' 
-              : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
-          }`}
-        >
-          <Layers className="w-4 h-4 text-stone-400 animate-pulse" />
-          Cronograma Gantt (PERT/CPM)
-        </button>
+        {enabledTabs.includes('gantt') && (
+          <button
+            onClick={() => setActiveSubTab('gantt')}
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+              activeSubTab === 'gantt' 
+                ? 'border-red-505 text-white bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-stone-400 animate-pulse" />
+            Cronograma Gantt (PERT/CPM)
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveSubTab('flow')}
-          className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
-            activeSubTab === 'flow' 
-              ? 'border-red-505 text-white bg-stone-900/40' 
-              : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
-          }`}
-        >
-          <Workflow className="w-4 h-4 text-stone-400" />
-          Fluxograma de Precedência
-        </button>
+        {enabledTabs.includes('flow') && (
+          <button
+            onClick={() => setActiveSubTab('flow')}
+            className={`px-4 py-3 text-xs font-mono font-extrabold uppercase tracking-wider border-b-2 flex items-center gap-2 transition ${
+              activeSubTab === 'flow' 
+                ? 'border-red-505 text-white bg-stone-900/40' 
+                : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+            }`}
+          >
+            <Workflow className="w-4 h-4 text-stone-400" />
+            Fluxograma de Precedência
+          </button>
+        )}
       </div>
 
       {/* FILTER CONTROL PANEL BAR */}
@@ -1502,7 +1516,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'name', e.target.value)}
                             placeholder="Nome / O quê fazer..."
-                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-950 text-white focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
                           />
                         </td>
 
@@ -1514,7 +1528,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'why', e.target.value)}
                             placeholder="Motivo / Propósito do plano..."
-                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-950 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
                           />
                         </td>
 
@@ -1526,7 +1540,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'where', e.target.value)}
                             placeholder="Local / Plataforma..."
-                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-950 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
                           />
                         </td>
 
@@ -1536,11 +1550,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             defaultValue={task.whoOwnerId || ''}
                             disabled={!isAllowed}
                             onChange={(e) => handleInlineChange(task.id, 'whoOwnerId', e.target.value)}
-                            className="w-full bg-transparent p-1.5 text-xs rounded border-transparent hover:border-stone-800 focus:bg-stone-950 text-stone-200 focus:outline-none disabled:opacity-50 cursor-pointer"
+                            className="w-full bg-transparent p-1.5 text-xs rounded border-transparent hover:border-stone-200 dark:hover:border-stone-800 focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-stone-200 focus:outline-none disabled:opacity-50 cursor-pointer"
                           >
-                            <option value="" className="bg-stone-900 text-stone-400">Pendente</option>
+                            <option value="" className="bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400">Pendente</option>
                             {users.map(u => (
-                              <option key={u.id} value={u.id} className="bg-stone-900 text-white">
+                              <option key={u.id} value={u.id} className="bg-white dark:bg-stone-900 text-stone-900 dark:text-white">
                                 {u.name}
                               </option>
                             ))}
@@ -1555,7 +1569,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'startDate', e.target.value)}
                             placeholder="AAAA-MM-DD"
-                            className="w-full bg-transparent p-2 text-xs rounded focus:bg-stone-950 focus:outline-none focus:ring-1 focus:ring-red-500 text-center disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 text-center disabled:opacity-50"
                           />
                         </td>
 
@@ -1567,7 +1581,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'endDate', e.target.value)}
                             placeholder="AAAA-MM-DD"
-                            className="w-full bg-transparent p-2 text-xs rounded focus:bg-stone-950 focus:outline-none focus:ring-1 focus:ring-red-500 text-center disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 text-center disabled:opacity-50"
                           />
                         </td>
 
@@ -1579,7 +1593,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'how', e.target.value)}
                             placeholder="Como realizar..."
-                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-950 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs truncate rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
                           />
                         </td>
 
@@ -1590,7 +1604,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             defaultValue={task.howMuch || 0}
                             disabled={!isAllowed}
                             onBlur={(e) => handleInlineChange(task.id, 'howMuch', isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
-                            className="w-full bg-transparent p-2 text-xs text-right rounded focus:bg-stone-950 focus:outline-none focus:ring-1 focus:ring-red-500 text-yellow-500 font-extrabold disabled:opacity-50"
+                            className="w-full bg-transparent p-2 text-xs text-right rounded focus:bg-stone-100 dark:focus:bg-stone-950 text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-red-500 text-yellow-500 font-extrabold disabled:opacity-50"
                           />
                         </td>
 
@@ -2257,7 +2271,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   placeholder="Inserir anotação livre ou indicador de decisão..."
                   value={newAnnotationText}
                   onChange={e => setNewAnnotationText(e.target.value)}
-                  className="bg-stone-950 border border-stone-800 hover:border-stone-750 focus:border-red-505 text-xs px-3 py-1.5 rounded text-white placeholder-stone-600 outline-none flex-grow"
+                  className="flex-grow bg-white dark:bg-stone-950 border border-stone-250 dark:border-stone-800 hover:border-stone-350 dark:hover:border-stone-750 text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-600 focus:border-red-505 dark:focus:border-red-505 text-xs px-3 py-1.5 rounded outline-none"
                 />
                 <button
                   type="submit"
@@ -2297,8 +2311,8 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 />
               </ReactFlow>
 
-              {/* Float guide panel */}
-              <div className="absolute bottom-4 right-4 bg-stone-900/90 border border-stone-800 backdrop-blur p-3 rounded text-[10px] text-stone-300 space-y-1.5 pointer-events-none z-10 font-bold">
+              {/* Float guide panel - repositioned to top-4 right-4 */}
+              <div className="absolute top-4 right-4 bg-stone-900/90 border border-stone-800 backdrop-blur p-3 rounded text-[10px] text-stone-300 space-y-1.5 pointer-events-none z-10 font-bold">
                 <div className="text-[10px] uppercase font-black tracking-wider text-red-505 select-none text-center border-b border-stone-800 pb-1 mb-1">
                   Guia de Fluxograma
                 </div>
@@ -2820,7 +2834,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
                 </div>
 
-                <p className="font-extrabold text-white mt-1.5 uppercase leading-normal">
+                <p className="font-extrabold text-stone-100 dark:text-white mt-1.5 uppercase leading-normal">
                   {task.name}
                 </p>
 

@@ -686,7 +686,6 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
             <Users className="w-5 text-red-500" />
             Engajamento & Matriz de Comunicações
           </h2>
-          <p className="text-stone-400 text-xs mt-0.5">Metodologias Mendelow (Poder/Interesse) e Planos de Alinhamento Multilaterais da Mach Racing</p>
         </div>
 
         {/* TOP LEVEL NAVIGATION TABS */}
