@@ -12,6 +12,7 @@ import {
   ShieldCheck, 
   Sparkles, 
   FileText, 
+  FileSpreadsheet,
   TrendingUp, 
   Activity, 
   Layers, 
@@ -29,6 +30,8 @@ import {
 } from 'lucide-react';
 import { Risk, ScopeChangeLog, StatusReport, Project, User as ProjectUser } from '../types';
 import EvmDashboard from './EvmDashboard';
+import { exportToPDF } from '../utils/pdfExport';
+import { exportToExcel } from '../utils/excelExport';
 
 interface RiskManagementProps {
   activeProject: Project;
@@ -40,58 +43,58 @@ const DEFAULT_RISKS = (projectId: string): Risk[] => [
   {
     id: `risk_chassis_${projectId}`,
     projectId,
-    title: 'Corte incoerente nos tubos de cromo-molibdênio do Chassi',
-    description: 'Risco técnico de corte incorreto por falha na calibragem da serra de fita no gabarito.',
+    title: 'Erro de tolerância na usinagem CNC do bloco de ABS/PU',
+    description: 'Risco de desvio nas dimensões mínimas regulamentares da asa traseira ou do chassi durante a usinagem CNC.',
     category: 'threat',
     area: 'Técnico',
     probability: 2,
     impact: 4,
     riskScore: 8,
     status: 'active',
-    mitigationPlan: 'Exigir assinatura dupla de projetista antes de cada corte e medição a laser.',
-    contingencyPlan: 'Acoplar insertos usinados de união ou solicitar tubos extras da reserva.'
+    mitigationPlan: 'Calibrar a CNC e conferir o gabarito 3D digital antes de iniciar o corte.',
+    contingencyPlan: 'Utilizar bloco reserva de PU ou ABS para re-usinagem imediata.'
   },
   {
     id: `risk_damper_${projectId}`,
     projectId,
-    title: 'Atraso na liberação alfandegária dos amortecedores Öhlins',
-    description: 'Atraso em importações diretas que compromete cronograma de testes dinâmicos de suspensão.',
+    title: 'Atraso na entrega dos micro-rolamentos cerâmicos importados',
+    description: 'Atraso na importação direta de rolamentos de baixo atrito que afeta os testes na pista de CO2.',
     category: 'threat',
     area: 'Aquisições',
     probability: 4,
     impact: 3,
     riskScore: 12,
     status: 'active',
-    mitigationPlan: 'Iniciar processo aduaneiro com despachante parceiro especializado.',
-    contingencyPlan: 'Adaptar os amortecedores recondicionados e re-viciados do protótipo FSAE 2025.'
+    mitigationPlan: 'Comprar com antecedência e homologar fornecedor alternativo nacional.',
+    contingencyPlan: 'Usar rolamentos de aço padrão polidos manualmente.'
   },
   {
     id: `risk_sponsorship_${projectId}`,
     projectId,
-    title: 'Nova parceria estratégica com usina para corte CNC integral',
-    description: 'Oportunidade de barter com grande fabricante metalúrgico para manufaturar mangas e cubos a custo zero.',
+    title: 'Parceria com patrocinador de manufatura aditiva (Impressora 3D industrial)',
+    description: 'Oportunidade de obter impressão de bicos e aerofólios traseiros em filamento de alta qualidade a custo zero.',
     category: 'opportunity',
     area: 'Financeiro',
     probability: 3,
     impact: 5,
     riskScore: 15,
     status: 'active',
-    mitigationPlan: 'Apresentar plano de contrapartida de marketing premium e convites VIP no Box.',
-    contingencyPlan: 'Utilizar horas subsidiadas do SENAI ou verba coletiva emergencial.'
+    mitigationPlan: 'Apresentar plano de contrapartida de marketing premium e convites para acompanhar a corrida.',
+    contingencyPlan: 'Utilizar impressoras FDM do laboratório do colégio/universidade.'
   },
   {
     id: `risk_engine_blow_${projectId}`,
     projectId,
-    title: 'Superaquecimento ou quebra interna do motor Honda CBR 600 nos testes',
-    description: 'Falha grave no motor de testes devido a mapa de rotações experimental excessivamente agressivo.',
+    title: 'Trinca ou vazamento de CO2 no acoplamento traseiro do cartucho',
+    description: 'Falha de vedação no furo de inserção do cartucho de gás carbônico durante as largadas experimentais.',
     category: 'threat',
     area: 'Técnico',
     probability: 2,
     impact: 5,
     riskScore: 10,
     status: 'watch_list',
-    mitigationPlan: 'Travar limite de giro eletrônico em mapa conservador e acompanhar telemetria térmica em tempo real.',
-    contingencyPlan: 'Utilizar motor reserva cadastrado e realizar trocas rápidas de cabeçote.'
+    mitigationPlan: 'Garantir diâmetro estrito conforme regulamento e testar encaixe de o-rings.',
+    contingencyPlan: 'Utilizar buchas de adaptação ou substituir o aerofólio traseiro completo contendo o suporte.'
   }
 ];
 
@@ -101,18 +104,18 @@ const DEFAULT_STATUS_REPORTS = (projectId: string): StatusReport[] => [
     projectId,
     reportDate: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString().split('T')[0], // 7 days ago
     projectStatus: 'good',
-    accomplishments: 'Soldagem de 60% das barras do frame estrutural com êxito. Chegada das pinças de freio Wilwood.',
-    ongoingTasks: 'Acoplamento do template de motor na bancada, desenvolvimento eletrônico da fiação principal.',
-    blockers: 'Aguardando chegada das bobinas de ignição do distribuidor nacional, prazo estendido em 4 dias.'
+    accomplishments: 'Usinagem de 60% do chassi modelo no bloco de ABS concluída com sucesso. Chegada dos rolamentos de cerâmica.',
+    ongoingTasks: 'Montagem preliminar dos eixos e rodas, testes virtuais de aerodinâmica no túnel de vento CFD.',
+    blockers: 'Aguardando chegada dos novos o-rings de vedação do cartucho de CO2 da alfândega; cronograma com 2 dias de folga.'
   },
   {
     id: `sr_p2_${projectId}`,
     projectId,
     reportDate: new Date().toISOString().split('T')[0], // Today
     projectStatus: 'at_risk',
-    accomplishments: 'Frame 100% finalizado. Geometria de suspensão dianteira validada em software CAD.',
-    ongoingTasks: 'Usinagem das mangas no torno mecânico, montagem preliminar dos suportes da suspensão.',
-    blockers: 'Impedimentos térmicos no motor devido à trinca no radiador sob pressão. Substituição necessária.'
+    accomplishments: 'Usinagem CNC 100% finalizada. Rodas traseiras e asa montadas de acordo com o regulamento.',
+    ongoingTasks: 'Lixamento manual fino e aplicação de primer para pintura do estande Pit Display.',
+    blockers: 'Gargalo no túnel de vento: desvios na fixação do cartucho causam turbulência indesejada. Re-estudo aerodinâmico necessário.'
   }
 ];
 
@@ -122,30 +125,39 @@ const DEFAULT_SCOPE_CHANGES = (projectId: string): ScopeChangeLog[] => [
     projectId,
     taskId: null,
     wbsItemId: null,
-    title: 'Transição estrutural de alumínio para alumínio aeronáutico 7075-T6',
-    description: 'Alteração do metal das mangas de suspensão para liga premium de alta tenacidade mecânica.',
-    impactOnTime: 5,
-    impactOnBudget: 620.00,
+    title: 'Usinagem do chassi em bloco de Poliuretano de Alta Densidade',
+    description: 'Substituição do bloco de ABS comum por PU de alta densidade visando melhor acabamento superficial após a fresa CNC.',
+    impactOnTime: 3,
+    impactOnBudget: 240.00,
     decision: 'approved',
-    justification: 'Aprovado pelo orientador mecânico de forma de mitigar fadiga e quebra catastrófica em curvas rápidas.',
-    requestedBy: 'Ana Clara (Líder Aero/Suspensão)'
+    justification: 'Aprovado pelo orientador técnico para otimizar rugosidade aerodinâmica externa e reduzir peso do modelo.',
+    requestedBy: 'Ana Clara (Líder Engenharia)'
   },
   {
     id: `sc_2_${projectId}`,
     projectId,
     taskId: null,
     wbsItemId: null,
-    title: 'Manufatura de carenagem traseira complexa (Difusor Ativo)',
-    description: 'Adicionar asas aerodinâmicas ativas nas laterais traseiras com acionamento servo-motorizado.',
-    impactOnTime: 15,
-    impactOnBudget: 1500.00,
+    title: 'Manufatura de asa traseira híbrida com micro-servomotores ativos',
+    description: 'Adicionar flaps móveis operados remotamente durante o trajeto da pista.',
+    impactOnTime: 12,
+    impactOnBudget: 750.00,
     decision: 'rejected',
-    justification: 'Rejeitado por ultrapassar drasticamente a tolerância orçamentária estipulada e infringir regras da competição.',
-    requestedBy: 'Pedro Henrique (Gestão de Projetos)'
+    justification: 'Rejeitado por violar a proibição do regulamento de peças ativas controladas via telemetria no dragster de CO2.',
+    requestedBy: 'Pedro Henrique (Gestão)'
   }
 ];
 
 export default function RiskManagement({ activeProject, activeUser, permissions }: RiskManagementProps) {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Navigation: Sub-tabs within Risks e Monitoramento
   const [subTab, setSubTab] = useState<'riscos' | 'relatorios' | 'escopo' | 'evm'>('riscos');
 
@@ -195,6 +207,26 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
   const [scDecision, setScDecision] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [scJustification, setScJustification] = useState('');
   const [scRequestedBy, setScRequestedBy] = useState('');
+
+  // Technical Regulation state variables for real-time dimension validation
+  const [scWeight, setScWeight] = useState<number>(0);
+  const [scLength, setScLength] = useState<number>(0);
+  const [scWidth, setScWidth] = useState<number>(0);
+
+  const [regulationRules, setRegulationRules] = useState<any[]>(() => {
+    const data = localStorage.getItem('stem_regulation_rules');
+    return data ? JSON.parse(data) : [];
+  });
+
+  // Listen to custom event for rule changes
+  useEffect(() => {
+    const handleRulesChanged = () => {
+      const data = localStorage.getItem('stem_regulation_rules');
+      if (data) setRegulationRules(JSON.parse(data));
+    };
+    window.addEventListener('stem_rules_changed', handleRulesChanged);
+    return () => window.removeEventListener('stem_rules_changed', handleRulesChanged);
+  }, []);
 
   // S3 / Upload simulations
   const apiBase = 'http://localhost:3001';
@@ -584,6 +616,20 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
     return result;
   }, [risks, selectedCell, riskAreaFilter, riskStatusFilter, riskSortKey, heatmapCategory]);
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6 select-none">
+        <div className="h-28 mach-skeleton w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-48 mach-skeleton" />
+          <div className="h-48 mach-skeleton" />
+          <div className="h-48 mach-skeleton" />
+        </div>
+        <div className="h-96 mach-skeleton w-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-6" id="riscos-monitoramento-root">
       
@@ -591,7 +637,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-stone-900 border border-stone-850 rounded-lg gap-4">
         <div>
           <span className="text-[9px] bg-red-650/10 border border-red-505/25 text-red-505 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-widest">
-            Fase de Execução de Engenharia • FSAE
+            Fase de Execução de Engenharia • STEM
           </span>
           <h1 className="text-lg font-display font-black text-white uppercase tracking-wider flex items-center gap-2 mt-1">
             <ShieldAlert className="w-5.5 h-5.5 text-red-500" />
@@ -828,6 +874,29 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const excelData = risks.map(r => ({
+                        Título: r.title,
+                        Descrição: r.description || '',
+                        Categoria: r.category === 'threat' ? 'Ameaça' : 'Oportunidade',
+                        Área: r.area,
+                        Probabilidade: r.probability,
+                        Impacto: r.impact,
+                        Score: r.riskScore,
+                        Status: r.status === 'active' ? 'Ativo' : r.status === 'watch_list' ? 'Watch List' : r.status === 'mitigated' ? 'Mitigado' : 'Disparado',
+                        'Plano de Mitigação': r.mitigationPlan || '',
+                        'Plano de Contingência': r.contingencyPlan || ''
+                      }));
+                      exportToExcel(excelData, `Matriz_De_Riscos_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, 'Matriz de Riscos');
+                    }}
+                    className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900 font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Exportar Excel
+                  </button>
+
                   {/* Category Filter */}
                   <div>
                     <label className="text-[9px] text-stone-400 block mb-1">Status</label>
@@ -902,9 +971,12 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                   <tbody>
                     {processedRisks.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-12 text-center text-stone-500 font-mono text-[11px]">
-                          <Inbox className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-                          Nenhum risco categorizado com filtros ativos nesta célula de severidade.
+                        <td colSpan={5} className="p-8">
+                          <div className="text-center py-8 px-4 bg-stone-955/20 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 font-mono">
+                            <Inbox className="w-8 h-8 text-stone-700/60" />
+                            <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Risco Qualificado</p>
+                            <p className="text-[10px] text-stone-500 max-w-xs">Não existem riscos cadastrados ou nenhum corresponde aos filtros atuais.</p>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -1038,8 +1110,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                 </div>
 
                 <div>
-                  <label className="mach-label">Principais Realizações (Accomplishments)</label>
+                  <label htmlFor="rep-accomplishments" className="mach-label">Principais Realizações (Accomplishments)</label>
                   <textarea 
+                    id="rep-accomplishments"
                     rows={3} 
                     required
                     value={repAccomplishments}
@@ -1050,8 +1123,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                 </div>
 
                 <div>
-                  <label className="mach-label">Atividades em Andamento (Ongoing Tasks)</label>
+                  <label htmlFor="rep-ongoing" className="mach-label">Atividades em Andamento (Ongoing Tasks)</label>
                   <textarea 
+                    id="rep-ongoing"
                     rows={3} 
                     required
                     value={repOngoingTasks}
@@ -1062,8 +1136,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                 </div>
 
                 <div>
-                  <label className="mach-label">Gargalos / Impedimentos (Blockers)</label>
+                  <label htmlFor="rep-blockers" className="mach-label">Gargalos / Impedimentos (Blockers)</label>
                   <textarea 
+                    id="rep-blockers"
                     rows={3} 
                     required
                     value={repBlockers}
@@ -1100,9 +1175,10 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
               </div>
 
               {statusReports.length === 0 ? (
-                <div className="py-20 text-center select-none">
-                  <Inbox className="w-12 h-12 text-stone-550 mx-auto mb-3" />
-                  <p className="text-stone-450 font-mono text-xs">A equipe ainda não registrou nenhum boletim de progresso para este projeto.</p>
+                <div className="text-center py-16 bg-stone-955/20 border border-dashed border-stone-800 rounded-lg flex flex-col items-center justify-center space-y-3 animate-fade-in w-full">
+                  <Inbox className="w-12 h-12 text-stone-600 mx-auto mb-3" />
+                  <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Boletim Registrado</p>
+                  <p className="text-[10px] text-stone-500 max-w-xs">A equipe ainda não registrou nenhum boletim semanal de progresso físico para este projeto.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -1130,7 +1206,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                   </div>
 
                   {/* ACTIVE DATA VIEWER */}
-                  <div className="md:col-span-8 bg-stone-955/20 border border-stone-852/40 p-5 rounded-lg space-y-4 font-sans select-text">
+                  <div className="md:col-span-8 bg-stone-955/20 border border-stone-852/40 p-5 rounded-lg space-y-4 font-sans select-text" id="status-report-pdf-container">
                     {(() => {
                       const activeRep = statusReports[selectedReportHistoryIndex];
                       if (!activeRep) return null;
@@ -1139,9 +1215,17 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                       return (
                         <div className="space-y-4">
                           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-stone-850 select-none">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-stone-500" />
                               <span className="text-xs text-white font-bold font-mono">Emissão: {activeRep.reportDate}</span>
+                              <button
+                                type="button"
+                                onClick={() => exportToPDF('status-report-pdf-container', `StatusReport_${activeRep.reportDate}.pdf`)}
+                                className="ml-2 bg-red-950/40 hover:bg-[#DC2626]/20 text-[#DC2626] border border-[#DC2626]/40 font-extrabold uppercase py-1 px-2.5 rounded flex items-center gap-1 transition text-[9px] cursor-pointer"
+                              >
+                                <FileText className="w-3 h-3" />
+                                Exportar PDF
+                              </button>
                             </div>
 
                             <span className={`px-2.5 py-0.5 rounded text-[10px] font-mono uppercase font-bold border ${lightIndicator}`}>
@@ -1199,8 +1283,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
 
                 <form onSubmit={handleCreateScopeChange} className="space-y-4 text-xs font-sans">
                   <div>
-                    <label className="mach-label">Título da Proposta de Escopo</label>
+                    <label htmlFor="sc-title" className="mach-label font-bold">Título da Proposta de Escopo</label>
                     <input 
+                      id="sc-title"
                       type="text" 
                       required
                       value={scTitle}
@@ -1211,8 +1296,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                   </div>
 
                   <div>
-                    <label className="mach-label">Descrição da Modificação Mecânica</label>
+                    <label htmlFor="sc-desc" className="mach-label font-bold">Descrição da Modificação Mecânica</label>
                     <textarea 
+                      id="sc-desc"
                       rows={2}
                       value={scDesc}
                       onChange={e => setScDesc(e.target.value)}
@@ -1223,8 +1309,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="mach-label">Impacto no Cronograma (Dias +/-)</label>
+                      <label htmlFor="sc-impact-time" className="mach-label font-bold">Impacto no Cronograma (Dias +/-)</label>
                       <input 
+                        id="sc-impact-time"
                         type="number"
                         value={scImpactTime}
                         onChange={e => setScImpactTime(Number(e.target.value))}
@@ -1233,10 +1320,11 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                     </div>
 
                     <div>
-                      <label className="mach-label">Impacto Orçamentário (R$ +/-)</label>
+                      <label htmlFor="sc-impact-budget" className="mach-label font-bold">Impacto Orçamentário (R$ +/-)</label>
                       <div className="relative">
                         <span className="absolute left-2.5 top-2 text-stone-500 font-bold">$</span>
                         <input 
+                          id="sc-impact-budget"
                           type="number"
                           step="0.01"
                           value={scImpactBudget}
@@ -1249,9 +1337,10 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
 
                   <div className="grid grid-cols-2 gap-3 select-none">
                     <div>
-                      <label className="mach-label">Proponente (Solicitante)</label>
+                      <label htmlFor="sc-requested-by" className="mach-label font-bold">Proponente (Solicitante)</label>
                       <input 
-                        type="text"
+                        id="sc-requested-by"
+                        type="text" 
                         required
                         value={scRequestedBy}
                         onChange={e => setScRequestedBy(e.target.value)}
@@ -1261,8 +1350,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                     </div>
 
                     <div>
-                      <label className="mach-label">Decisão Inicial</label>
+                      <label htmlFor="sc-decision" className="mach-label font-bold">Decisão Inicial</label>
                       <select 
+                        id="sc-decision"
                         value={scDecision}
                         onChange={e => setScDecision(e.target.value as any)}
                         className="mach-input font-medium font-mono"
@@ -1275,14 +1365,91 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                   </div>
 
                   <div>
-                    <label className="mach-label">Justificativa Executiva da Decisão</label>
+                    <label htmlFor="sc-justification" className="mach-label font-bold">Justificativa Executiva da Decisão</label>
                     <textarea 
+                      id="sc-justification"
                       rows={2}
                       value={scJustification}
                       onChange={e => setScJustification(e.target.value)}
                       placeholder="Parecer técnico ou financeiro para justificar aprovação ou veto..."
                       className="mach-input"
                     />
+                  </div>
+
+                  {/* Real-time Technical Regulation Validation */}
+                  <div className="bg-stone-950 p-3 rounded border border-stone-800 space-y-2 font-mono text-[10px]">
+                    <span className="text-[#DC2626] font-bold uppercase tracking-wider block">Conformidade Técnica (F1 in Schools):</span>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[8px] text-stone-500 block uppercase">Peso (g)</label>
+                        <input
+                          type="number"
+                          value={scWeight || ''}
+                          onChange={e => setScWeight(Number(e.target.value))}
+                          placeholder="Ex: 52"
+                          className="w-full bg-stone-900 border border-stone-800 rounded p-1 text-center font-mono text-white text-[10px]"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="text-[8px] text-stone-500 block uppercase">Comp. (mm)</label>
+                        <input
+                          type="number"
+                          value={scLength || ''}
+                          onChange={e => setScLength(Number(e.target.value))}
+                          placeholder="Ex: 190"
+                          className="w-full bg-stone-900 border border-stone-800 rounded p-1 text-center font-mono text-white text-[10px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[8px] text-stone-500 block uppercase">Larg. (mm)</label>
+                        <input
+                          type="number"
+                          value={scWidth || ''}
+                          onChange={e => setScWidth(Number(e.target.value))}
+                          placeholder="Ex: 62"
+                          className="w-full bg-stone-900 border border-stone-800 rounded p-1 text-center font-mono text-white text-[10px]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dynamic warnings based on regulationRules */}
+                    {(() => {
+                      const weightRule = regulationRules.find(r => r.parameterName === 'weight_limit_g');
+                      const lengthRule = regulationRules.find(r => r.parameterName === 'length_limit_mm');
+                      const widthRule = regulationRules.find(r => r.parameterName === 'width_limit_mm');
+                      
+                      const warnings = [];
+                      if (weightRule && scWeight > 0 && scWeight < weightRule.limitValue) {
+                        warnings.push(`Peso abaixo do mínimo (${weightRule.limitValue}g)`);
+                      }
+                      if (lengthRule && scLength > 0 && scLength > lengthRule.limitValue) {
+                        warnings.push(`Comprimento acima do máximo (${lengthRule.limitValue}mm)`);
+                      }
+                      if (widthRule && scWidth > 0 && scWidth > widthRule.limitValue) {
+                        warnings.push(`Largura acima do máximo (${widthRule.limitValue}mm)`);
+                      }
+
+                      if (warnings.length > 0) {
+                        return (
+                          <div className="p-2 bg-red-950/20 border border-red-900/40 text-red-400 rounded text-[9px] font-sans leading-normal">
+                            <strong>⚠️ Violação de Regulamento:</strong>
+                            <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                              {warnings.map((w, index) => <li key={index}>{w}</li>)}
+                            </ul>
+                          </div>
+                        );
+                      } else if (scWeight > 0 || scLength > 0 || scWidth > 0) {
+                        return (
+                          <div className="p-2 bg-emerald-950/20 border border-emerald-900/40 text-emerald-400 rounded text-[9px] font-sans leading-normal">
+                            <strong>✔️ Conformidade Aprovada:</strong> Dimensões dentro dos limites técnicos da temporada!
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <button 
@@ -1318,9 +1485,12 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                     <tbody>
                       {scopeChanges.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="py-12 text-center text-stone-500 font-mono text-[11px]">
-                            <Inbox className="w-8 h-8 text-stone-550 mx-auto mb-2" />
-                            Nenhuma mudança de escopo foi submetida até o momento.
+                          <td colSpan={4} className="p-8">
+                            <div className="text-center py-8 px-4 bg-stone-955/20 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 font-mono w-full">
+                              <Inbox className="w-8 h-8 text-stone-700/60" />
+                              <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Registro de Escopo</p>
+                              <p className="text-[10px] text-stone-500 max-w-xs">Nenhuma mudança de escopo foi submetida até o momento para o bólido.</p>
+                            </div>
                           </td>
                         </tr>
                       ) : (
@@ -1375,7 +1545,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                   <div className="flex items-center gap-1.5 text-stone-400 font-extrabold uppercase text-[9px]">
                     <ShieldCheck className="w-4 h-4 text-stone-400" /> CONTROLE LEGAL DE INTEGRIDADE:
                   </div>
-                  <span>Garantia de auditoria estrita • Norma de conformidade FSAE 2026</span>
+                  <span>Garantia de auditoria estrita • Norma de conformidade F1 2026</span>
                 </div>
               </div>
             </div>
@@ -1401,8 +1571,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
 
             <form onSubmit={handleCreateRisk} className="p-4 space-y-4 text-xs font-sans">
               <div>
-                <label className="mach-label">Título da Ameaça ou Oportunidade</label>
+                <label htmlFor="risk-title-input" className="mach-label">Título da Ameaça ou Oportunidade</label>
                 <input 
+                  id="risk-title-input"
                   type="text" 
                   value={riskTitle} 
                   required
@@ -1413,8 +1584,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
               </div>
 
               <div>
-                <label className="mach-label">Área Envolvida</label>
-                <select value={riskArea} onChange={e => setRiskArea(e.target.value)} className="mach-input select-none text-white bg-stone-950">
+                <label htmlFor="risk-area-select" className="mach-label">Área Envolvida</label>
+                <select id="risk-area-select" value={riskArea} onChange={e => setRiskArea(e.target.value)} className="mach-input select-none text-white bg-stone-950">
                   <option value="Técnico">Técnico (Engenharia / Solda / CNC)</option>
                   <option value="Financeiro">Financeiro (Orçamento / Patrocínio)</option>
                   <option value="Aquisições">Aquisições (Logística / Fornecedores)</option>
@@ -1424,8 +1595,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
 
               <div className="grid grid-cols-2 gap-3 select-none">
                 <div>
-                  <label className="mach-label">Gênero / Categoria</label>
-                  <select value={riskCategory} onChange={e => setRiskCategory(e.target.value as any)} className="mach-input text-white bg-stone-950">
+                  <label htmlFor="risk-category-select" className="mach-label">Gênero / Categoria</label>
+                  <select id="risk-category-select" value={riskCategory} onChange={e => setRiskCategory(e.target.value as any)} className="mach-input text-white bg-stone-950">
                     <option value="threat">Ameaça (Threat)</option>
                     <option value="opportunity">Oportunidade (Opportunity)</option>
                   </select>
@@ -1433,8 +1604,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
 
                 <div className="grid grid-cols-2 gap-1.5">
                   <div>
-                    <label className="mach-label">P (1-5)</label>
+                    <label htmlFor="risk-prob-input" className="mach-label">P (1-5)</label>
                     <input 
+                      id="risk-prob-input"
                       type="number" 
                       min="1" 
                       max="5" 
@@ -1445,8 +1617,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
                     />
                   </div>
                   <div>
-                    <label className="mach-label">I (1-5)</label>
+                    <label htmlFor="risk-imp-input" className="mach-label">I (1-5)</label>
                     <input 
+                      id="risk-imp-input"
                       type="number" 
                       min="1" 
                       max="5" 
@@ -1460,8 +1633,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
               </div>
 
               <div>
-                <label className="mach-label">Descrição Breve do Impacto Físico</label>
+                <label htmlFor="risk-desc-input" className="mach-label">Descrição Breve do Impacto Físico</label>
                 <textarea 
+                  id="risk-desc-input"
                   rows={2} 
                   value={riskDesc} 
                   onChange={e => setRiskDesc(e.target.value)} 
@@ -1471,8 +1645,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
               </div>
 
               <div>
-                <label className="mach-label text-emerald-500">Plano de Mitigação Técnica (Ação Preventiva)</label>
+                <label htmlFor="risk-mitigation-input" className="mach-label text-emerald-500">Plano de Mitigação Técnica (Ação Preventiva)</label>
                 <textarea 
+                  id="risk-mitigation-input"
                   rows={2} 
                   value={riskMitigation} 
                   onChange={e => setRiskMitigation(e.target.value)} 
@@ -1482,8 +1657,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
               </div>
 
               <div>
-                <label className="mach-label text-red-500">Plano de Contingência (Ação Corretiva se Disparar)</label>
+                <label htmlFor="risk-contingency-input" className="mach-label text-red-500">Plano de Contingência (Ação Corretiva se Disparar)</label>
                 <textarea 
+                  id="risk-contingency-input"
                   rows={2} 
                   value={riskContingency} 
                   onChange={e => setRiskContingency(e.target.value)} 

@@ -36,8 +36,8 @@ import RiskManagement from './components/RiskManagement';
 
 // Pre-seeded local mock database
 const INITIAL_ORGS: Organization[] = [
-  { id: 'org_mach_one', name: 'Mach One Racing (Formula SAE)' },
-  { id: 'org_aerodesign', name: 'Planalto AeroDesign' }
+  { id: 'org_mach_one', name: 'Mach Racing (F1 in Schools)' },
+  { id: 'org_aerodesign', name: 'Planalto AeroDesign (STEM)' }
 ];
 
 const INITIAL_USERS: User[] = [
@@ -50,7 +50,7 @@ const INITIAL_PROJECTS: Project[] = [
   { 
     id: 'proj_fsae_2026', 
     organizationId: 'org_mach_one', 
-    name: 'M1-FSAE Combustion Car 2026', 
+    name: 'Mach Racing F1 in Schools 2026', 
     startDate: '2026-01-10', 
     endDate: '2026-11-20', 
     executionRegime: 'fast_tracking' 
@@ -58,14 +58,14 @@ const INITIAL_PROJECTS: Project[] = [
   { 
     id: 'proj_secret_ev', 
     organizationId: 'org_mach_one', 
-    name: 'Mach One Electric (EV Prototype)', 
+    name: 'Mach Racing Aero & Usinagem CNC', 
     startDate: '2026-03-01', 
     endDate: '2026-12-15', 
     executionRegime: 'linear' 
   }
 ];
 
-// Pedro belongs to both, Ana and Bruno belong ONLY to combustion
+// Pedro belongs to both, Ana and Bruno belong ONLY to F1 in Schools
 const INITIAL_MEMBERSHIPS: ProjectMember[] = [
   { id: 'mem_pedro_comb', projectId: 'proj_fsae_2026', userId: 'user_pedro', role: 'admin', userEmail: 'director@machone.test', userName: 'Pedro Henrique' },
   { id: 'mem_ana_comb', projectId: 'proj_fsae_2026', userId: 'user_ana', role: 'area_lead', userEmail: 'leader@machone.test', userName: 'Ana Clara' },
@@ -73,7 +73,33 @@ const INITIAL_MEMBERSHIPS: ProjectMember[] = [
   { id: 'mem_pedro_ev', projectId: 'proj_secret_ev', userId: 'user_pedro', role: 'admin', userEmail: 'director@machone.test', userName: 'Pedro Henrique' }
 ];
 
+const INITIAL_REGULATION_RULES = [
+  { id: 'rule_weight', projectId: 'proj_fsae_2026', parameterName: 'weight_limit_g', limitValue: 50.0, unit: 'g', description: 'Peso mínimo do carrinho sem cartucho de CO2' },
+  { id: 'rule_length', projectId: 'proj_fsae_2026', parameterName: 'length_limit_mm', limitValue: 210.0, unit: 'mm', description: 'Comprimento total máximo permitido para o dragster' },
+  { id: 'rule_width', projectId: 'proj_fsae_2026', parameterName: 'width_limit_mm', limitValue: 65.0, unit: 'mm', description: 'Largura máxima com as rodas traseiras montadas' },
+  { id: 'rule_co2', projectId: 'proj_fsae_2026', parameterName: 'co2_canister_g', limitValue: 8.0, unit: 'g', description: 'Massa padrão do cartucho de gás carbônico descartável' }
+];
+
+const INITIAL_MACH_WHEEL_SCORES = [
+  { id: 'score_eng', projectId: 'proj_fsae_2026', category: 'Engineering Portfolio', scoreBefore: 5.5, scoreAfter: 8.5 },
+  { id: 'score_ent', projectId: 'proj_fsae_2026', category: 'Enterprise Portfolio', scoreBefore: 6.0, scoreAfter: 9.0 },
+  { id: 'score_soc', projectId: 'proj_fsae_2026', category: 'Social Development / Sustainability Portfolio', scoreBefore: 4.0, scoreAfter: 7.5 },
+  { id: 'score_verb', projectId: 'proj_fsae_2026', category: 'Verbal Presentation', scoreBefore: 5.0, scoreAfter: 8.0 },
+  { id: 'score_pit', projectId: 'proj_fsae_2026', category: 'Pit Display', scoreBefore: 4.5, scoreAfter: 8.5 },
+  { id: 'score_id', projectId: 'proj_fsae_2026', category: 'Team Identity', scoreBefore: 6.5, scoreAfter: 9.5 }
+];
+
 export default function App() {
+  // Seeding Regulation Rules and Mach Wheel Scores in LocalStorage
+  useEffect(() => {
+    if (!localStorage.getItem('stem_regulation_rules')) {
+      localStorage.setItem('stem_regulation_rules', JSON.stringify(INITIAL_REGULATION_RULES));
+    }
+    if (!localStorage.getItem('stem_mach_wheel_scores')) {
+      localStorage.setItem('stem_mach_wheel_scores', JSON.stringify(INITIAL_MACH_WHEEL_SCORES));
+    }
+  }, []);
+
   // Database States (sync with localStorage)
   const [organizations, setOrganizations] = useState<Organization[]>(() => {
     const data = localStorage.getItem('stem_orgs');
@@ -116,7 +142,7 @@ export default function App() {
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  const [regOrgName, setRegOrgName] = useState('Mach One Racing (Formula SAE)');
+  const [regOrgName, setRegOrgName] = useState('Mach Racing (F1 in Schools)');
 
   // Project Creation states
   const [showProjForm, setShowProjForm] = useState(false);
@@ -832,7 +858,7 @@ export default function App() {
                       required
                       value={regOrgName}
                       onChange={e => setRegOrgName(e.target.value)}
-                      placeholder="ex. Pegasus Formula Racing" 
+                      placeholder="ex. Pegasus STEM Racing" 
                       className="mach-input"
                     />
                   </div>
@@ -861,14 +887,14 @@ export default function App() {
                   // Simulate Google Social OAuth2 Login action
                   setActiveUser({
                     id: 'google_user_demo',
-                    email: 'parceria.fsae@g.unicamp.br',
+                    email: 'parceria.f1@g.unicamp.br',
                     name: 'Guilherme Leonardo (Google Auth)'
                   });
                   // Preseeding a workspace for google user
                   const newProj: Project = {
                     id: 'proj_google_racing',
                     organizationId: 'org_mach_one',
-                    name: 'Unicamp Pegasus Electric Hub',
+                    name: 'Unicamp Pegasus STEM F1 Hub',
                     startDate: '2026-06-20',
                     endDate: '2026-12-01',
                     executionRegime: 'fast_tracking'
@@ -880,7 +906,7 @@ export default function App() {
                       projectId: 'proj_google_racing',
                       userId: 'google_user_demo',
                       role: 'admin',
-                      userEmail: 'parceria.fsae@g.unicamp.br',
+                      userEmail: 'parceria.f1@g.unicamp.br',
                       userName: 'Guilherme Leonardo (Google Auth)'
                     }]);
                   }
@@ -943,7 +969,7 @@ export default function App() {
                   {/* ACTIVE TIMELINE DATE */}
                   <div className="flex items-center gap-2 px-3 py-1 bg-stone-900 text-[10px] font-mono text-stone-400 border border-stone-800/60 rounded">
                     <Clock className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Timeline FSAE : Junho 2026</span>
+                    <span>Timeline STEM : Junho 2026</span>
                   </div>
                 </div>
 
@@ -1103,13 +1129,13 @@ export default function App() {
                     <div className="pt-2">
                       <button
                         onClick={() => {
-                          // Restore combustion default project selection
+                          // Restore default F1 in Schools project selection
                           setActiveProject(INITIAL_PROJECTS[0]);
                           setForbiddenError(null);
                         }}
                         className="mach-button-primary bg-red-750 hover:bg-red-750 text-xs font-bold uppercase tracking-wider"
                       >
-                        ◄ Retornar ao Projeto de Combustão Principal
+                        ◄ Retornar ao Projeto F1 in Schools Principal
                       </button>
                     </div>
                   </div>
@@ -1440,7 +1466,7 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="bg-stone-900 border-t border-stone-850 py-4 text-center select-none font-mono text-[9px] uppercase tracking-wider text-stone-500">
-        Plataforma STEM Racing • FSAE Hub de Alta Performance • Integração Fase 0 (Fundação) • UTFPR & Univs.
+        Plataforma STEM Racing • F1 in Schools Hub de Alta Performance • Integração Fase 0 (Fundação) • UTFPR & Univs.
       </footer>
 
       {/* CREATE NEW PROJECT MODAL */}

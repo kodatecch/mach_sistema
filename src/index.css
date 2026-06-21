@@ -48,3 +48,15 @@
 ::-webkit-scrollbar-thumb {
   @apply bg-stone-200 dark:bg-stone-800 rounded-full hover:bg-stone-300 dark:hover:bg-stone-700;
 }
+
+/* Pulsing Skeletons for Loading States */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
+
+.mach-skeleton {
+  @apply bg-stone-800/60 dark:bg-stone-800/40 rounded animate-pulse;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+

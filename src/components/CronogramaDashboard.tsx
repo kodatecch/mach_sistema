@@ -30,8 +30,12 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
-  Sliders
+  Sliders,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportToPDF } from '../utils/pdfExport';
+import { exportToExcel } from '../utils/excelExport';
 import ReactFlow, { 
   Background, 
   Controls, 
@@ -53,12 +57,12 @@ interface CronogramaDashboardProps {
 // Provides beautiful, fast, and authentic REST API queries & mutations
 // -----------------------------------------------------------------
 const getInitialWbs = (): WbsItem[] => [
-  { id: 'wbs-chassis', projectId: 'proj_fsae_2026', parentId: null, code: '1.0', name: 'CHASSIS & ESTRUTURA', description: 'Nível macro da engenharia estrutural do bólido.' },
-  { id: 'wbs-monocoque', projectId: 'proj_fsae_2026', parentId: 'wbs-chassis', code: '1.1', name: 'Monocoque de Fibra de Carbono', description: 'Laminação artesanal e cura secundária.' },
-  { id: 'wbs-santoantonio', projectId: 'proj_fsae_2026', parentId: 'wbs-chassis', code: '1.2', name: 'Santo Antônio e Soldagem TIG', description: 'Estrutura tubular de proteção de aço cromo-molibdênio.' },
-  { id: 'wbs-aero', projectId: 'proj_fsae_2026', parentId: null, code: '2.0', name: 'AERODINÂMICA & FLUIDODINÂMICA', description: 'Aprimoramentos de arrasto e coeficiente aerodinâmico.' },
-  { id: 'wbs-cfd', projectId: 'proj_fsae_2026', parentId: 'wbs-aero', code: '2.1', name: 'Simulações CFD de Escoamento', description: 'Estudo de esteira aerodinâmica e geração de downforce.' },
-  { id: 'wbs-drs', projectId: 'proj_fsae_2026', parentId: 'wbs-aero', code: '2.2', name: 'Asa Traseira com Flaps de DRS', description: 'Asa ativa pneumática com acionamento na reta.' }
+  { id: 'wbs-chassis', projectId: 'proj_fsae_2026', parentId: null, code: '1.0', name: 'PROJETO MECÂNICO & MODELO', description: 'Nível macro da engenharia estrutural e aerodinâmica do modelo.' },
+  { id: 'wbs-monocoque', projectId: 'proj_fsae_2026', parentId: 'wbs-chassis', code: '1.1', name: 'Usinagem CNC do Chassi', description: 'Fresagem do chassi a partir do bloco de ABS ou poliuretano.' },
+  { id: 'wbs-santoantonio', projectId: 'proj_fsae_2026', parentId: 'wbs-chassis', code: '1.2', name: 'Aerofólios e Rodas (Impressão 3D)', description: 'Impressão 3D das asas dianteira e traseira e fabricação das rodas oficiais.' },
+  { id: 'wbs-aero', projectId: 'proj_fsae_2026', parentId: null, code: '2.0', name: 'CFD & DINÂMICA DE FLUIDOS', description: 'Análise virtual de arrasto e esteira aerodinâmica.' },
+  { id: 'wbs-cfd', projectId: 'proj_fsae_2026', parentId: 'wbs-aero', code: '2.1', name: 'Simulações CFD em Túnel de Vento', description: 'Simulação computacional com cartucho de CO2 acoplado.' },
+  { id: 'wbs-drs', projectId: 'proj_fsae_2026', parentId: 'wbs-aero', code: '2.2', name: 'Sistema de Rodagem e Eixos (Buchas)', description: 'Montagem de rolamentos de baixo atrito nos eixos do carrinho.' }
 ];
 
 const getInitialTasks = (): Task[] => [
@@ -66,17 +70,17 @@ const getInitialTasks = (): Task[] => [
     id: 't-fea-santoantonio',
     projectId: 'proj_fsae_2026',
     wbsItemId: 'wbs-santoantonio',
-    name: 'Cálculo FEA de Torção Estrutural',
-    description: 'Avaliar resistências do Santo Antônio nas acelerações críticas regulamentares.',
+    name: 'Estudo de Tolerâncias e Massa das Rodas',
+    description: 'Avaliar resistência e conformidade de peso das rodas usinadas/impressas no regulamento da temporada.',
     status: 'todo',
     startDate: '2026-06-05',
     endDate: '2026-06-20',
-    what: 'Cálculo de Torção e Impacto FEA',
-    why: 'Demonstrar conformidade obrigatória com as normas de pista do regulamento de Fórmula SAE.',
-    where: 'Laboratório de Fluidos e Elementos Finitos',
+    what: 'Cálculo de Inércia e Flexão da Roda',
+    why: 'Garantir conformidade obrigatória com os limites de peso e medidas oficiais da temporada.',
+    where: 'Laboratório de Elementos Finitos e Design 3D',
     whenDate: '2026-06-20',
     whoOwnerId: 'user_pedro',
-    how: 'Computação em malha poliédrica com modelo elasto-plástico no Ansys Workbench.',
+    how: 'Computação e simulações estáticas no Ansys Workbench com malha refinada.',
     howMuch: 400,
     durationOptimistic: 3,
     durationLikely: 6,
@@ -89,17 +93,17 @@ const getInitialTasks = (): Task[] => [
     id: 't-curva-monocoque',
     projectId: 'proj_fsae_2026',
     wbsItemId: 'wbs-monocoque',
-    name: 'Usinagem CNC da Espuma de Poliuretano',
-    description: 'Modelo macho em espessura nominal para laminação de fibra de carbono em autoclave.',
+    name: 'Usinagem CNC do Bloco de Poliuretano',
+    description: 'Usinagem do modelo principal do chassi a partir do bloco oficial da temporada no CNC.',
     status: 'in_progress',
     startDate: '2026-06-10',
     endDate: '2026-06-28',
-    what: 'Modelo macho moldado do monocoque',
-    why: 'Criar a fôrma primária do cockpit essencial ao encaixe do piloto.',
-    where: 'Oficina do Patrocinador Metalúrgico',
+    what: 'Fresar chassi principal do dragster',
+    why: 'Manufaturar o corpo aerodinâmico principal de acordo com o CAD final homologado.',
+    where: 'Oficina de Usinagem CNC e Prototipagem',
     whenDate: '2026-06-28',
     whoOwnerId: 'user_ana',
-    how: 'Fresa CNC de 5 eixos seguindo modelo do CAD exportado.',
+    how: 'Fresa CNC de 3 ou 5 eixos utilizando o percurso gerado no software CAM.',
     howMuch: 1800,
     durationOptimistic: 4,
     durationLikely: 8,
@@ -112,17 +116,17 @@ const getInitialTasks = (): Task[] => [
     id: 't-ensaio-tracao',
     projectId: 'proj_fsae_2026',
     wbsItemId: 'wbs-monocoque',
-    name: 'Ensaios Destrutivos de Tração da Fibra',
-    description: 'Verificação empírica de corpos de prova curados sob vácuo.',
+    name: 'Pesagem e Inspeção do Modelo Físico',
+    description: 'Verificação empírica de peso mínimo e dimensões limite do carrinho usinado.',
     status: 'done',
     startDate: '2026-06-01',
     endDate: '2026-06-08',
-    what: 'Ensaios de tração e flexão de 5 corpos de prova',
-    why: 'Alimentar o software FEA com dados reais de rigidez mecânica compósita.',
-    where: 'Prensa Hidráulica do Departamento de Materiais',
+    what: 'Conformidade Scrutineering de 3 protótipos de teste',
+    why: 'Assegurar que o carrinho não infringirá o limite mínimo de 50.0g e demais cotas regulamentares.',
+    where: 'Bancada de Pesagem e Gabarito de Medição',
     whenDate: '2026-06-08',
     whoOwnerId: 'user_bruno',
-    how: 'Carga de transição contínua com extensômetro óptico acoplado.',
+    how: 'Uso de balança de precisão calibrada e paquímetro digital.',
     howMuch: 150,
     durationOptimistic: 1,
     durationLikely: 2,
@@ -135,17 +139,17 @@ const getInitialTasks = (): Task[] => [
     id: 't-drs-transiente',
     projectId: 'proj_fsae_2026',
     wbsItemId: 'wbs-drs',
-    name: 'Detalhamento do Acionador Pneumático do DRS',
-    description: 'Projeto físico do pistão sob a carcaça do aerofólio.',
+    name: 'Detalhamento do Suporte do Cartucho de CO2',
+    description: 'Projeto do furo traseiro de inserção do cartucho de gás carbônico.',
     status: 'todo',
     startDate: '25/06/2026',
     endDate: '2026-07-05',
-    what: 'Sistema de transmissão mecânica DRS',
-    why: 'Minimizar arrasto aerodinâmico em mais de 25% nas retas principais de teste.',
-    where: 'Prédio da Oficina Mecânica Acadêmica',
+    what: 'Câmara de acoplamento da cápsula de CO2',
+    why: 'Garantir vedação perfeita e alinhamento do centro de gravidade durante o disparo na pista.',
+    where: 'Laboratório de CAD e Prototipagem',
     whenDate: '2026-07-05',
     whoOwnerId: 'user_ana',
-    how: 'Montagem de rolamentos autolubrificantes e válvula magnética de CO2.',
+    how: 'Modelagem paramétrica 3D e teste de encaixe com cartucho padrão de 8g.',
     howMuch: 650,
     durationOptimistic: 2,
     durationLikely: 4,
@@ -594,7 +598,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         return JSON.parse(localData);
       } else {
         const initial = [
-          { id: 'ann-1', text: 'Revisão crítica de conformidade com regulamento FSAE Artigo 4.', position: { x: 50, y: 350 } },
+          { id: 'ann-1', text: 'Revisão crítica de conformidade com regulamento técnico oficial.', position: { x: 50, y: 350 } },
           { id: 'ann-2', text: 'Se o ensaio de tração falhar, o modelo FEA precisará ser recalibrado com novos limites de ruptura.', position: { x: 320, y: 250 } }
         ];
         localStorage.setItem(storageKey, JSON.stringify(initial));
@@ -1353,9 +1357,29 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             onDrop={handleWbsDropOnRoot}
             className="p-6 bg-stone-900 border border-stone-850 rounded relative min-h-[400px] space-y-4"
           >
-            {rootWbsItems.length === 0 ? (
-              <div className="text-center py-20 text-stone-500 font-mono text-xs">
-                Nenhum item EAP raiz registrado. Clique em "Novo Item Raiz" para modelar a árvore.
+            {isLoadingWbs ? (
+              <div className="space-y-3 py-6">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-10 mach-skeleton w-full" />
+                ))}
+              </div>
+            ) : rootWbsItems.length === 0 ? (
+              <div className="text-center py-20 text-stone-500 font-mono text-xs flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-stone-900 border border-stone-850 flex items-center justify-center text-stone-400">
+                  <Info className="w-6 h-6 text-stone-500" />
+                </div>
+                <div>
+                  <p className="font-bold text-stone-300">Nenhum item EAP raiz registrado</p>
+                  <p className="text-[10px] text-stone-500 mt-1">Configure os macro-entregáveis para decompor suas sprints.</p>
+                </div>
+                {isAdminOrLead && (
+                  <button
+                    onClick={() => handleOpenAddWbs(null)}
+                    className="mach-button-primary bg-red-650 hover:bg-red-700 text-[10px] cursor-pointer"
+                  >
+                    Novo Item Raiz
+                  </button>
+                )}
               </div>
             ) : (
               rootWbsItems.map(rootNode => renderNodeTree(rootNode, 0))
@@ -1380,10 +1404,35 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
           </div>
         ) : (
           <div className="bg-stone-900 border border-stone-850 rounded overflow-hidden select-text">
-          <div className="p-4 bg-stone-900 border-b border-stone-850 flex items-center gap-2">
+          <div className="p-4 bg-stone-900 border-b border-stone-850 flex items-center gap-4">
             <Table className="w-4 h-4 text-red-550" />
             <h3 className="text-xs font-black font-mono uppercase text-white tracking-widest">Planilha Dinâmica de 5W2H</h3>
-            <span className="text-[10px] font-mono text-stone-500 ml-auto uppercase bg-stone-950 px-2 py-0.5 rounded border border-stone-850">
+            
+            <button
+              type="button"
+              onClick={() => {
+                const mappedData = filteredTasks.map((t, idx) => ({
+                  'Ref': t.id.slice(0, 5).toUpperCase(),
+                  'WHAT (Nome)': t.name,
+                  'WHY (Justificativa)': t.why || '',
+                  'WHERE (Onde)': t.where || '',
+                  'WHO (Membro)': users.find(u => u.id === t.whoOwnerId)?.name || t.whoOwnerId || '',
+                  'WHEN (Início)': t.startDate || '',
+                  'WHEN (Fim)': t.endDate || '',
+                  'HOW (Metodologia)': t.how || '',
+                  'HOW MUCH (Quanto)': t.howMuch || 0,
+                  'Status': t.status === 'todo' ? 'Pendente' : t.status === 'in_progress' ? 'Execução' : 'Concluído',
+                  'Duração PERT (Dias)': t.durationExpected || 0
+                }));
+                exportToExcel(mappedData, `5W2H_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, '5W2H');
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer ml-auto"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Exportar Excel
+            </button>
+
+            <span className="text-[10px] font-mono text-stone-500 uppercase bg-stone-950 px-2 py-0.5 rounded border border-stone-850">
               Autosalvamento em tempo real (OnBlur)
             </span>
           </div>
@@ -1405,10 +1454,35 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-850">
-                {filteredTasks.length === 0 ? (
+                {isLoadingTasks ? (
+                  [1, 2, 3, 4].map(i => (
+                    <tr key={i}>
+                      <td colSpan={10} className="p-4">
+                        <div className="h-6 mach-skeleton w-full" />
+                      </td>
+                    </tr>
+                  ))
+                ) : filteredTasks.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="p-12 text-center text-stone-500 font-mono text-xs">
-                      Nenhuma tarefa encontrada nos filtros ativos.
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-stone-900 border border-stone-850 flex items-center justify-center text-stone-400">
+                          <Info className="w-5 h-5 text-stone-500" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-stone-300">Nenhuma tarefa encontrada</p>
+                          <p className="text-[10px] text-stone-500 mt-0.5">Nenhuma tarefa corresponde aos filtros ou está cadastrada neste projeto.</p>
+                        </div>
+                        {isAdminOrLead && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAddTask()}
+                            className="mach-button-primary bg-red-650 hover:bg-red-700 text-[9px] py-1.5 px-3.5 mt-1 cursor-pointer"
+                          >
+                            Criar Primeira Tarefa da EAP
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -1901,8 +1975,16 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               <div className="flex gap-2">
                 <button
                   type="button"
+                  onClick={() => exportToPDF('gantt-chart-export-container', `Gantt_${activeProject.name.replace(/\s+/g, '_')}.pdf`, 'l')}
+                  className="bg-red-650 hover:bg-red-700 text-white font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Exportar Gantt PDF
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowAddMilestone(true)}
-                  className="bg-stone-950 border border-stone-800 hover:border-stone-700 text-stone-300 font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px]"
+                  className="bg-stone-950 border border-stone-800 hover:border-stone-700 text-stone-300 font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 text-red-505" />
                   Novo Marco Datas-Chave
@@ -1912,8 +1994,8 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
             {/* Manual milestones list panel */}
             {customMilestones.length > 0 && (
-              <div className="bg-stone-950 border border-stone-850 rounded p-3 flex flex-wrap gap-3 items-center">
-                <span className="text-[9px] font-black uppercase text-red-505">Marcos Ativos:</span>
+              <div className="bg-stone-955 border border-stone-850 rounded p-3 flex flex-wrap gap-3 items-center">
+                <span className="text-[9px] font-black uppercase text-red-550">Marcos Ativos:</span>
                 {customMilestones.map(m => (
                   <div key={m.id} className="bg-stone-900 border border-stone-800 text-[10px] px-2.5 py-1 rounded flex items-center gap-2 text-white">
                     <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping" />
@@ -1925,7 +2007,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             )}
 
             {/* Gantt Grid Panel */}
-            <div className="border border-stone-850 rounded-lg overflow-hidden flex flex-col md:flex-row bg-stone-950">
+            <div id="gantt-chart-export-container" className="border border-stone-850 rounded-lg overflow-hidden flex flex-col md:flex-row bg-stone-950">
               {/* Left Task Sheet List */}
               <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-stone-850 flex flex-col shrink-0 select-text">
                 <div className="bg-stone-900 px-4 py-3 border-b border-stone-850 font-black tracking-wider uppercase text-stone-300 h-14 flex items-center">
@@ -2258,8 +2340,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
             <form onSubmit={saveWbsFormState} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-stone-400 block font-bold uppercase tracking-wide">Código Identificador (WBS Code)</label>
+                <label htmlFor="wbsCodeInput" className="text-stone-400 block font-bold uppercase tracking-wide">Código Identificador (WBS Code)</label>
                 <input
+                  id="wbsCodeInput"
                   type="text"
                   required
                   placeholder="ex. 1.1 ou 2.1.3"
@@ -2270,8 +2353,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               </div>
 
               <div className="space-y-1">
-                <label className="text-stone-400 block font-bold uppercase tracking-wide">Título do Nó EDT</label>
+                <label htmlFor="wbsNameInput" className="text-stone-400 block font-bold uppercase tracking-wide">Título do Nó EDT</label>
                 <input
+                  id="wbsNameInput"
                   type="text"
                   required
                   placeholder="ex: Projeto do Chassi Monocoque"
@@ -2282,8 +2366,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               </div>
 
               <div className="space-y-1">
-                <label className="text-stone-400 block font-bold uppercase tracking-wide">Filiado ao Nó de EAP Pai (Opcional)</label>
+                <label htmlFor="wbsParentInput" className="text-stone-400 block font-bold uppercase tracking-wide">Filiado ao Nó de EAP Pai (Opcional)</label>
                 <select
+                  id="wbsParentInput"
                   value={wbsParentInput}
                   onChange={e => setWbsParentInput(e.target.value)}
                   className="mach-input font-mono"
@@ -2301,8 +2386,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               </div>
 
               <div className="space-y-1">
-                <label className="text-stone-400 block font-bold uppercase tracking-wide">Descrição / Entregas Físicas</label>
+                <label htmlFor="wbsDescInput" className="text-stone-400 block font-bold uppercase tracking-wide">Descrição / Entregas Físicas</label>
                 <textarea
+                  id="wbsDescInput"
                   placeholder="Defina as entregas físicas agregadas neste item..."
                   value={wbsDescInput}
                   onChange={e => setWbsDescInput(e.target.value)}
@@ -2354,8 +2440,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               {/* ROW 1: BASICS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-stone-400 block font-bold uppercase tracking-wide">Nome Principal / Atividade (WHAT)</label>
+                  <label htmlFor="task-name-input" className="text-stone-400 block font-bold uppercase tracking-wide">Nome Principal / Atividade (WHAT)</label>
                   <input
+                    id="task-name-input"
                     type="text"
                     required
                     placeholder="Quem/O quê deve ser realizado"
@@ -2366,8 +2453,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-stone-400 block font-bold uppercase tracking-wide">Filiação na EAP (WBS Node)</label>
+                  <label htmlFor="task-wbs-input" className="text-stone-400 block font-bold uppercase tracking-wide">Filiação na EAP (WBS Node)</label>
                   <select
+                    id="task-wbs-input"
                     value={taskWbsInput}
                     onChange={e => setTaskWbsInput(e.target.value)}
                     className="mach-input"
@@ -2388,8 +2476,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">WHY (Propósito / Justificativa)</label>
+                    <label htmlFor="task-why" className="text-stone-500 block font-bold uppercase tracking-wide">WHY (Propósito / Justificativa)</label>
                     <input
+                      id="task-why"
                       type="text"
                       placeholder="Por que esta meta é considerada estratégica?"
                       value={taskWhy}
@@ -2399,8 +2488,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">WHERE (Localização / Ambiente)</label>
+                    <label htmlFor="task-where" className="text-stone-500 block font-bold uppercase tracking-wide">WHERE (Localização / Ambiente)</label>
                     <input
+                      id="task-where"
                       type="text"
                       placeholder="ex: Plataforma CAD / Laboratório Mecânico"
                       value={taskWhere}
@@ -2410,8 +2500,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">WHO (Proprietário principal)</label>
+                    <label htmlFor="task-owner" className="text-stone-500 block font-bold uppercase tracking-wide">WHO (Proprietário principal)</label>
                     <select
+                      id="task-owner"
                       value={taskOwner}
                       onChange={e => setTaskOwner(e.target.value)}
                       className="mach-input font-bold text-white cursor-pointer"
@@ -2424,8 +2515,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">HOW (Método de Execução)</label>
+                    <label htmlFor="task-how" className="text-stone-500 block font-bold uppercase tracking-wide">HOW (Método de Execução)</label>
                     <input
+                      id="task-how"
                       type="text"
                       placeholder="ex: Laminação manual seguindo o processo de vácuo"
                       value={taskHow}
@@ -2437,8 +2529,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">WHEN (Data de Início)</label>
+                    <label htmlFor="task-start" className="text-stone-500 block font-bold uppercase tracking-wide">WHEN (Data de Início)</label>
                     <input
+                      id="task-start"
                       type="text"
                       placeholder="AAAA-MM-DD"
                       value={taskStart}
@@ -2448,8 +2541,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">WHEN (Data Limite)</label>
+                    <label htmlFor="task-end" className="text-stone-500 block font-bold uppercase tracking-wide">WHEN (Data Limite)</label>
                     <input
+                      id="task-end"
                       type="text"
                       placeholder="AAAA-MM-DD"
                       value={taskEnd}
@@ -2459,8 +2553,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">HOW MUCH (Custo Planejado R$)</label>
+                    <label htmlFor="task-howmuch" className="text-stone-500 block font-bold uppercase tracking-wide">HOW MUCH (Custo Planejado R$)</label>
                     <input
+                      id="task-howmuch"
                       type="number"
                       placeholder="R$"
                       value={taskHowMuch}
@@ -2479,8 +2574,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">Otimista (O)</label>
+                    <label htmlFor="pert-opt" className="text-stone-500 block font-bold uppercase tracking-wide">Otimista (O)</label>
                     <input
+                      id="pert-opt"
                       type="number"
                       min={1}
                       value={pertOpt}
@@ -2490,8 +2586,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">Mais Provável (M)</label>
+                    <label htmlFor="pert-likely" className="text-stone-500 block font-bold uppercase tracking-wide">Mais Provável (M)</label>
                     <input
+                      id="pert-likely"
                       type="number"
                       min={1}
                       value={pertLikely}
@@ -2501,8 +2598,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">Pessimista (P)</label>
+                    <label htmlFor="pert-pess" className="text-stone-500 block font-bold uppercase tracking-wide">Pessimista (P)</label>
                     <input
+                      id="pert-pess"
                       type="number"
                       min={1}
                       value={pertPess}
@@ -2521,8 +2619,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               {/* ROW SUMMARY: TASK DIRECT STATE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-stone-400 block font-bold uppercase tracking-wide font-mono">Status da Atividade</label>
+                  <label htmlFor="task-status" className="text-stone-400 block font-bold uppercase tracking-wide font-mono">Status da Atividade</label>
                   <select
+                    id="task-status"
                     value={taskStatusInput}
                     onChange={e => setTaskStatusInput(e.target.value)}
                     className="mach-input font-bold"
@@ -2534,8 +2633,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-stone-400 block font-bold uppercase tracking-wide">Descrição complementar</label>
+                  <label htmlFor="task-desc" className="text-stone-400 block font-bold uppercase tracking-wide">Descrição complementar</label>
                   <input
+                    id="task-desc"
                     type="text"
                     placeholder="Considerações físicas do engenheiro"
                     value={taskDescInput}
@@ -2552,8 +2652,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-stone-500 block font-bold uppercase tracking-wide">Tarefa Predecessora (Depende de)</label>
+                    <label htmlFor="task-predecessor" className="text-stone-500 block font-bold uppercase tracking-wide">Tarefa Predecessora (Depende de)</label>
                     <select
+                      id="task-predecessor"
                       value={taskPredecessor}
                       onChange={e => setTaskPredecessor(e.target.value)}
                       className="mach-input"
@@ -2586,8 +2687,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
               {/* COMENTÁRIO / FEEDBACK AUDITÁVEL */}
               <div className="space-y-1">
-                <label className="text-stone-300 block font-bold uppercase tracking-wider text-[10.5px] font-mono">Comentário ou Notas de Auditoria (Mentor / Coordenadores)</label>
+                <label htmlFor="task-comment" className="text-stone-300 block font-bold uppercase tracking-wider text-[10.5px] font-mono">Comentário ou Notas de Auditoria (Mentor / Coordenadores)</label>
                 <textarea
+                  id="task-comment"
                   placeholder="Seja construtivo: adicione observações, diretrizes ou orientações estratégicas de mentoria."
                   value={taskComment}
                   onChange={e => setTaskComment(e.target.value)}

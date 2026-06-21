@@ -159,10 +159,10 @@ export default function TasksSchedule({ tasks, setTasks, members }: TasksSchedul
         w5h2: {
           what: formName,
           why: 'Garantir conformidade regulatória nas avaliações do protótipo.',
-          where: 'Laboratório de Engenharia / Oficinas de Compósitos',
+          where: 'Laboratório de Manufatura / Área de Usinagem CNC',
           when: formEnd,
           who: members.find(m => m.id === formAssigned)?.name || 'Responsável',
-          how: 'Uso de ferramentais calibrados seguindo o regulamento FSAE.',
+          how: 'Uso de ferramentais calibrados seguindo o regulamento técnico.',
           howMuch: Number(formPlannedCost)
         }
       };
@@ -612,10 +612,10 @@ export default function TasksSchedule({ tasks, setTasks, members }: TasksSchedul
                 const pl = task.w5h2 || {
                   what: task.name,
                   why: 'Garantir conformidade regulatória nas avaliações do protótipo.',
-                  where: 'Oficina / Laboratório da universidade',
+                  where: 'Oficina / Laboratório da equipe',
                   when: task.endDate,
                   who: assigned?.name || 'Responsável',
-                  how: 'Atendimento estrito das diretrizes FSAE.',
+                  how: 'Atendimento estrito das diretrizes F1 in Schools.',
                   howMuch: task.plannedCost
                 };
 

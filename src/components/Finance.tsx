@@ -25,7 +25,10 @@ import {
   Percent,
   Search,
   User,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  FileSpreadsheet,
+  Info
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -39,6 +42,8 @@ import {
   ReferenceLine
 } from 'recharts';
 import { Project, User as UserType } from '../types';
+import { exportToPDF } from '../utils/pdfExport';
+import { exportToExcel } from '../utils/excelExport';
 
 interface FinanceProps {
   activeProject: Project;
@@ -94,14 +99,14 @@ interface CashFlowEntry {
 }
 
 // ---------------------------------------------------------
-// PRE-SEEDED DETAILED DATA FOR FORMULA SAE 2026
+// PRE-SEEDED DETAILED DATA FOR F1 IN SCHOOLS 2026
 // ---------------------------------------------------------
 const SEED_RESOURCES = (projId: string): ResourcePlanItem[] => [
   {
     id: 'res-tubos-4130',
     projectId: projId,
-    name: 'Tubos de Aço Molibdênio 4130 chassi',
-    quantity: 14,
+    name: 'Cartuchos descartáveis de CO2 de 8g',
+    quantity: 20,
     idealDate: '2026-06-25',
     owner: 'Ana Clara',
     origin: 'sponsorship',
@@ -110,8 +115,8 @@ const SEED_RESOURCES = (projId: string): ResourcePlanItem[] => [
   {
     id: 'res-manga-eixo',
     projectId: projId,
-    name: 'Manga de Eixo Dianteira CNC',
-    quantity: 4,
+    name: 'Bloco de Usinagem ABS (Carrinho Modelo)',
+    quantity: 5,
     idealDate: '2026-07-10',
     owner: 'Pedro Henrique',
     origin: 'institutional',
@@ -120,7 +125,7 @@ const SEED_RESOURCES = (projId: string): ResourcePlanItem[] => [
   {
     id: 'res-telemetria',
     projectId: projId,
-    name: 'Módulo de Aquisição de Dados & Telemetria',
+    name: 'Sensores de Pista & Kit de Rodas e Eixos Oficiais',
     quantity: 1,
     idealDate: '2026-08-02',
     owner: 'Bruno Sousa',
@@ -133,52 +138,52 @@ const SEED_QUOTATIONS: Quotation[] = [
   {
     id: 'q-tub-1',
     resourceId: 'res-tubos-4130',
-    supplier: 'Metalúrgica TuboAço Curitiba',
-    unitPrice: 280,
+    supplier: 'STEM Shop Brasil',
+    unitPrice: 25,
     deliveryDays: 5,
-    qualityRemarks: 'Tolerância dimensional rigida, acompanha laudo do fabricante.',
+    qualityRemarks: 'Cartuchos CO2 oficiais de 8g testados e aprovados para competição.',
     isSelected: true
   },
   {
     id: 'q-tub-2',
     resourceId: 'res-tubos-4130',
-    supplier: 'Siderúrgica Paulista LTDA',
-    unitPrice: 310,
+    supplier: 'Distribuidora de Gás CO2 Sul',
+    unitPrice: 28,
     deliveryDays: 3,
-    qualityRemarks: 'Aço certificado SAE; ótimo acabamento externo sem costura.'
+    qualityRemarks: 'Cartuchos de alta pureza; ótimo acabamento externo sem rebarbas.'
   },
   {
     id: 'q-tub-3',
     resourceId: 'res-tubos-4130',
-    supplier: 'Nacional Metais Importados',
-    unitPrice: 260,
+    supplier: 'Importadora Rápida Dragsters',
+    unitPrice: 22,
     deliveryDays: 15,
-    qualityRemarks: 'Preço promocional, mas o frete atrasa no desembaraço.'
+    qualityRemarks: 'Menor preço unitário, porém entrega lenta sujeita a atrasos alfandegários.'
   },
   {
     id: 'q-manga-1',
     resourceId: 'res-manga-eixo',
-    supplier: 'Usinagem Precision CNC',
-    unitPrice: 850,
+    supplier: 'Protótipos CNC e Impressão 3D',
+    unitPrice: 320,
     deliveryDays: 12,
-    qualityRemarks: 'Corte a 5 eixos. Acabamento polido tipo aviação aeronáutica.'
+    qualityRemarks: 'Corte a 5 eixos em poliuretano de alta densidade. Acabamento impecável.'
   },
   {
     id: 'q-manga-2',
     resourceId: 'res-manga-eixo',
-    supplier: 'Oficina Rápida Industrial',
-    unitPrice: 790,
+    supplier: 'Oficina CNC Integrada',
+    unitPrice: 290,
     deliveryDays: 7,
-    qualityRemarks: 'Prazo veloz. Peça com pequenas marcas de torno não estruturais.',
+    qualityRemarks: 'Prazo veloz. Peça com tolerância micrométrica regulamentar.',
     isSelected: true
   },
   {
     id: 'q-tel-1',
     resourceId: 'res-telemetria',
-    supplier: 'FSAE Electronics Store',
-    unitPrice: 1450,
+    supplier: 'F1 in Schools Portal Oficial',
+    unitPrice: 850,
     deliveryDays: 4,
-    qualityRemarks: 'Wifi integrado de longo alcance. Totalmente compatível com ECU.'
+    qualityRemarks: 'Sensores de pista integrados com fotocélulas eletrônicas e telemetria de 20 metros.'
   }
 ];
 
@@ -186,34 +191,34 @@ const SEED_BUDGET_LINES = (projId: string): BudgetLine[] => [
   {
     id: 'bl-1',
     projectId: projId,
-    name: 'Matéria Prima Chassi Tubular (Aço 4130)',
+    name: 'Cartuchos descartáveis de CO2 de 8g',
     category: 'Materiais',
-    quantity: 14,
-    unitValue: 280
+    quantity: 20,
+    unitValue: 25
   },
   {
     id: 'bl-2',
     projectId: projId,
-    name: 'Usinagem de Mangas de Eixo Traseiras',
+    name: 'Bloco de Usinagem ABS (Carrinho Modelo)',
     category: 'Usinagem',
-    quantity: 4,
-    unitValue: 790
+    quantity: 5,
+    unitValue: 290
   },
   {
     id: 'bl-3',
     projectId: projId,
-    name: 'Filamentos Carbono Caremagem 3D',
+    name: 'Filamentos Polímeros Estande 3D',
     category: 'Materiais',
     quantity: 5,
-    unitValue: 180
+    unitValue: 120
   },
   {
     id: 'bl-4',
     projectId: projId,
-    name: 'Passagens Aéreas e Inscrições Formula SAE Brasil',
+    name: 'Inscrições Oficiais STEM Racing e Logística Estacional',
     category: 'Logística',
-    quantity: 12,
-    unitValue: 450
+    quantity: 1,
+    unitValue: 1200
   }
 ];
 
@@ -221,9 +226,9 @@ const SEED_CASH_FLOW = (projId: string): CashFlowEntry[] => [
   {
     id: 'cf-1',
     projectId: projId,
-    description: 'Patrocínio Diamante - Concessionária Autódromo',
+    description: 'Patrocínio Master - Patrocinador de Tecnologia',
     type: 'revenue',
-    amount: 15000,
+    amount: 5000,
     category: 'Patrocínio',
     date: '2026-06-01',
     isReconciled: true
@@ -233,7 +238,7 @@ const SEED_CASH_FLOW = (projId: string): CashFlowEntry[] => [
     projectId: projId,
     description: 'Subvenção Anual do Diretório Acadêmico STEM',
     type: 'revenue',
-    amount: 8000,
+    amount: 2000,
     category: 'Institucional',
     date: '2026-06-05',
     isReconciled: true
@@ -241,9 +246,9 @@ const SEED_CASH_FLOW = (projId: string): CashFlowEntry[] => [
   {
     id: 'cf-3',
     projectId: projId,
-    description: 'Compra de Tubos de Aço (Nota Fiscal nº 1092)',
+    description: 'Compra de Cartuchos de CO2 (Nota Fiscal nº 1092)',
     type: 'expense',
-    amount: 3920, // 14 metros * 280 reais
+    amount: 500, // 20 * 25
     category: 'Materiais',
     date: '2026-06-15',
     isReconciled: true
@@ -251,50 +256,50 @@ const SEED_CASH_FLOW = (projId: string): CashFlowEntry[] => [
   {
     id: 'cf-4',
     projectId: projId,
-    description: 'Borrachas de Vedação e Coxins do Motor',
+    description: 'Eixos de Titânio e Buchas de Rolamento',
     type: 'expense',
-    amount: 650,
+    amount: 220,
     category: 'Materiais',
     date: '2026-06-18',
-    isReconciled: false // Overdue if today is e.g. June 20? No, this is fine, but let's have an older one to show the 14 days warning!
+    isReconciled: false
   },
   {
     id: 'cf-5',
     projectId: projId,
-    description: 'Usinagem Flanges de Escape CNC (Pendente há mais de 14 dias!)',
+    description: 'Usinagem CNC Bloco de Poliuretano (Pendente há mais de 14 dias!)',
     type: 'expense',
-    amount: 1200,
+    amount: 870,
     category: 'Usinagem',
-    date: '2026-05-25', // More than 14 days ago relative to June 20, 2026!
+    date: '2026-05-25',
     isReconciled: false
   },
   {
     id: 'cf-6',
     projectId: projId,
-    description: 'Alimentação Treino Prático Campo de Provas',
+    description: 'Filamentos Polímeros Estande 3D',
     type: 'expense',
     amount: 450,
-    category: 'Logística',
-    date: '2026-06-02', // Overdue relative to June 20!
+    category: 'Materiais',
+    date: '2026-06-02',
     isReconciled: false
   },
   {
     id: 'cf-7',
     projectId: projId,
-    description: 'Reserva Emergencial - Extintor de Incêndio Adicional',
+    description: 'Reserva Emergencial - Trilho de Testes CO2 Extra',
     type: 'expense',
-    amount: 1100,
+    amount: 600,
     category: 'Ferramental',
     date: '2026-06-14',
     isReconciled: true,
-    isContingencyFunded: true // Paid via Contingency Contingency Reserve
+    isContingencyFunded: true
   },
   {
     id: 'cf-8',
     projectId: projId,
-    description: 'Doação Individual por Torcedores Acadêmicos (Apoie o Mach One!)',
+    description: 'Doação Individual por Torcedores Acadêmicos (Apoie o Mach Racing!)',
     type: 'revenue',
-    amount: 2500,
+    amount: 1500,
     category: 'Patrocínio',
     date: '2026-05-18',
     isReconciled: true
@@ -313,6 +318,15 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
   // Scenario toggle inside budget: 'otimista' | 'realista' | 'pessimista'
   const [activeScenario, setActiveScenario] = useState<'otimista' | 'realista' | 'pessimista'>('realista');
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // ---------------------------------------------------------
   // PERSISTENCE & RESOURCE STATES
@@ -766,6 +780,20 @@ export default function Finance({ activeProject, activeUser, memberships, users,
     return map[orig] || orig;
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6 select-none">
+        <div className="h-28 mach-skeleton w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-24 mach-skeleton" />
+          <div className="h-24 mach-skeleton" />
+          <div className="h-24 mach-skeleton" />
+        </div>
+        <div className="h-96 mach-skeleton w-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 select-text" id="finance-detailed cockpit-container">
       
@@ -774,7 +802,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[9px] bg-[#DC2626] text-white px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
-              Finanças FSAE
+              Finanças F1 in Schools
             </span>
             <span className="text-stone-500 font-mono text-[10px]">
               ID: {activeProject.id}
@@ -784,7 +812,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             Orçamento & Controle Monetário
           </h1>
           <p className="text-xs text-stone-400 mt-1 max-w-2xl leading-relaxed">
-            Painel dinâmico da equipe <span className="text-white font-semibold">Mach One Racing</span>. Planeje a aquisição de recursos físicos, selecione cotações vencedoras, teste cenários de custos pessimistas e controle o livro de fluxo de caixa operacional.
+            Painel dinâmico da equipe <span className="text-white font-semibold">Mach Racing</span>. Planeje a aquisição de recursos físicos, selecione cotações vencedoras, teste cenários de custos pessimistas e controle o livro de fluxo de caixa operacional.
           </p>
         </div>
 
@@ -855,8 +883,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                 <form onSubmit={handleAddResource} className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">RECURSO / MATERIAL *</label>
+                    <label htmlFor="res-name-input" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">RECURSO / MATERIAL *</label>
                     <input 
+                      id="res-name-input"
                       type="text"
                       required
                       placeholder="ex. Bobina de Ignição MSD Blaster"
@@ -868,8 +897,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">QUANTIDADE *</label>
+                      <label htmlFor="res-qty-input" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">QUANTIDADE *</label>
                       <input 
+                        id="res-qty-input"
                         type="number"
                         required
                         min="1"
@@ -879,8 +909,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DATA ADQUISIÇÃO</label>
+                      <label htmlFor="res-date-input" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DATA ADQUISIÇÃO</label>
                       <input 
+                        id="res-date-input"
                         type="date"
                         required
                         value={resForm.idealDate}
@@ -891,8 +922,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">MEMBRO RESPONSÁVEL</label>
+                    <label htmlFor="res-owner-select" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">MEMBRO RESPONSÁVEL</label>
                     <select
+                      id="res-owner-select"
                       value={resForm.owner}
                       onChange={e => setResForm({...resForm, owner: e.target.value})}
                       className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
@@ -907,8 +939,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">ORIGEM DA VERBA</label>
+                      <label htmlFor="res-origin-select" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">ORIGEM DA VERBA</label>
                       <select
+                        id="res-origin-select"
                         value={resForm.origin}
                         onChange={e => setResForm({...resForm, origin: e.target.value as any})}
                         className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
@@ -920,8 +953,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA EAP</label>
+                      <label htmlFor="res-category-select" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA EAP</label>
                       <select
+                        id="res-category-select"
                         value={resForm.category}
                         onChange={e => setResForm({...resForm, category: e.target.value})}
                         className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
@@ -972,7 +1006,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     <tbody className="divide-y divide-stone-850 bg-stone-950/20">
                       {resources.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="text-center p-8 text-stone-500 italic">Nenhum recurso incluído no plano físico.</td>
+                          <td colSpan={6} className="p-8">
+                            <div className="text-center py-8 px-4 bg-stone-950/30 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                              <Briefcase className="w-8 h-8 text-stone-700/60" />
+                              <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum recurso cadastrado</p>
+                              <p className="text-[10px] text-stone-500 max-w-xs">Insira novos insumos na barra lateral para iniciar o planejamento financeiro do hardware.</p>
+                            </div>
+                          </td>
                         </tr>
                       ) : (
                         resources.map(res => {
@@ -1103,8 +1143,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                         <form onSubmit={handleAddQuotation} className="space-y-4">
                           <div>
-                            <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">NOME FORNECEDOR *</label>
+                            <label htmlFor="quote-supplier" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">NOME FORNECEDOR *</label>
                             <input 
+                              id="quote-supplier"
                               type="text"
                               required
                               placeholder="ex. Metalúrgica Tubos SRM"
@@ -1116,8 +1157,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">PREÇO UNITÁRIO (R$) *</label>
+                              <label htmlFor="quote-price" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">PREÇO UNITÁRIO (R$) *</label>
                               <input 
+                                id="quote-price"
                                 type="number"
                                 min="0.1"
                                 step="any"
@@ -1128,8 +1170,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">PRAZO DO FRETE (DIAS) *</label>
+                              <label htmlFor="quote-freight" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">PRAZO DO FRETE (DIAS) *</label>
                               <input 
+                                id="quote-freight"
                                 type="number"
                                 min="1"
                                 required
@@ -1141,8 +1184,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           </div>
 
                           <div>
-                            <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold font-bold">ACOMPANHAMENTOS DE QUALIDADE / NOTAS</label>
+                            <label htmlFor="quote-remarks" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">ACOMPANHAMENTOS DE QUALIDADE / NOTAS</label>
                             <textarea 
+                              id="quote-remarks"
                               placeholder="Fretagem, ISO 9001, tolerâncias de solda..."
                               rows={3}
                               value={quoteForm.qualityRemarks}
@@ -1177,12 +1221,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                             {matchingQuotes.length} Cadastradas
                           </span>
                         </div>
+                      </div>
 
                         {matchingQuotes.length === 0 ? (
-                          <div className="text-center py-16 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-3">
-                            <AlertTriangle className="w-8 h-8 text-stone-600" />
-                            <p className="text-xs text-stone-400 italic">Nenhuma cotação de fornecedor para este material ainda.</p>
-                            <p className="text-[10px] text-stone-500">Utilize o formulário lateral para preencher a primeira proposta.</p>
+                          <div className="text-center py-16 bg-stone-950/20 border border-dashed border-stone-800 rounded-lg flex flex-col items-center justify-center space-y-3 animate-fade-in w-full">
+                            <AlertTriangle className="w-8 h-8 text-amber-500/60" />
+                            <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Sem Cotações para este Recurso</p>
+                            <p className="text-[10px] text-stone-500 max-w-xs">Use o painel lateral para registrar propostas de fornecedores e comparar custos de aquisição.</p>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1282,8 +1327,6 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       )}
 
                     </div>
-
-                  </div>
                 );
               })()
             ) : (
@@ -1378,8 +1421,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                 <form onSubmit={handleAddBudgetLine} className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DESIGNAÇÃO ORÇAMENTÁRIA *</label>
+                    <label htmlFor="budget-name" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DESIGNAÇÃO ORÇAMENTÁRIA *</label>
                     <input 
+                      id="budget-name"
                       type="text"
                       required
                       placeholder="ex. Adesão de filamentos PETG de alto impacto"
@@ -1390,8 +1434,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA EAP *</label>
+                    <label htmlFor="budget-category" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA EAP *</label>
                     <select
+                      id="budget-category"
                       value={budgetForm.category}
                       onChange={e => setBudgetForm({...budgetForm, category: e.target.value})}
                       className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none"
@@ -1407,8 +1452,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">QUANTIDADE *</label>
+                      <label htmlFor="budget-qty" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">QUANTIDADE *</label>
                       <input 
+                        id="budget-qty"
                         type="number"
                         min="1"
                         required
@@ -1418,8 +1464,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">VALOR UNITÁRIO REALISTA (R$) *</label>
+                      <label htmlFor="budget-unitvalue" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">VALOR UNITÁRIO REALISTA (R$) *</label>
                       <input 
+                        id="budget-unitvalue"
                         type="number"
                         min="0.1"
                         step="any"
@@ -1448,13 +1495,22 @@ export default function Finance({ activeProject, activeUser, memberships, users,
               </div>
 
               {/* Detailed Budgeted Cost Table */}
-              <div className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+              <div id="budget-table-export-container" className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
                 <div>
-                  <div className="flex justify-between items-center mb-4 select-none">
+                  <div className="flex justify-between items-center mb-4 select-none gap-4">
                     <div>
                       <h3 className="text-xs font-bold uppercase text-white tracking-wider">Planilha Analítica por Categorias</h3>
                       <p className="text-[10px] text-stone-500 mt-1 leading-snug">Visualizando multiplicador de cenário: <span className="text-[#DC2626] font-bold font-mono">{(scenarioMultiplier * 100)}%</span></p>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => exportToPDF('budget-table-export-container', `Orcamento_${activeProject.name.replace(/\s+/g, '_')}.pdf`)}
+                      className="bg-red-650 hover:bg-red-700 text-white font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer ml-auto"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Exportar PDF
+                    </button>
                     
                     <div className="text-right bg-stone-950 border border-stone-800 px-3 py-1.5 rounded text-xs select-none">
                       <span className="text-[9px] font-mono text-stone-450 block uppercase font-bold">Custo Total Consolidado</span>
@@ -1480,7 +1536,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       <tbody className="divide-y divide-stone-850 bg-stone-950/20">
                         {renderedBudgetLines.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="text-center p-8 text-stone-500 italic">Nenhum custo orçado no protótipo.</td>
+                            <td colSpan={7} className="p-8">
+                              <div className="text-center py-8 px-4 bg-stone-950/30 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                                <Sliders className="w-8 h-8 text-stone-700/60" />
+                                <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Custo Orçado</p>
+                                <p className="text-[10px] text-stone-500 max-w-xs">Adicione linhas planejadas no formulário lateral ou clique em "Gerar cotações" para importar valores de fornecedores.</p>
+                              </div>
+                            </td>
                           </tr>
                         ) : (
                           renderedBudgetLines.map(line => (
@@ -1551,7 +1613,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             <div className="space-y-6">
             
             {/* Ledger highlights indicators */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4" id="cashflow-totals-grid">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cashflow-totals-grid">
               
               <div className="mach-card bg-stone-900 border border-stone-855 py-4 flex flex-col justify-between">
                 <div className="flex justify-between items-start text-xs text-stone-400 font-medium font-mono">
@@ -1616,7 +1678,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
               <div className="flex justify-between items-center mb-4 select-none pb-2 border-b border-stone-850">
                 <div>
                   <h3 className="text-xs font-bold uppercase text-stone-200 tracking-wider">
-                    Análise Mensal de Receita vs Despesa (Formula SAE Plan)
+                    Análise Mensal de Receita vs Despesa (F1 in Schools Plan)
                   </h3>
                   <p className="text-[10px] text-stone-500 font-sans mt-0.5">Distribuição do livro-caixa sobre a Linha do Tempo de engenharia</p>
                 </div>
@@ -1659,8 +1721,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                   <form onSubmit={handleAddCashFlowEntry} className="space-y-4">
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DESIGNAÇÃO DO PAGAMENTO *</label>
+                      <label htmlFor="cf-desc" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DESIGNAÇÃO DO PAGAMENTO *</label>
                       <input 
+                        id="cf-desc"
                         type="text"
                         required
                         placeholder="ex. Pagamento parcial alumínio carenagem"
@@ -1672,8 +1735,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">TIPO *</label>
+                        <label htmlFor="cf-type" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">TIPO *</label>
                         <select
+                          id="cf-type"
                           value={cashFlowForm.type}
                           onChange={e => setCashFlowForm({...cashFlowForm, type: e.target.value as any})}
                           className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none focus:border-[#DC2626]"
@@ -1684,8 +1748,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA</label>
+                        <label htmlFor="cf-category" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA</label>
                         <select
+                          id="cf-category"
                           value={cashFlowForm.category}
                           onChange={e => setCashFlowForm({...cashFlowForm, category: e.target.value})}
                           className="w-full bg-stone-950 border border-stone-800 rounded p-2 text-xs text-white focus:outline-none"
@@ -1705,8 +1770,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold font-bold">MONTANTE (R$) *</label>
+                        <label htmlFor="cf-amount" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">MONTANTE (R$) *</label>
                         <input 
+                          id="cf-amount"
                           type="number"
                           min="0.1"
                           step="any"
@@ -1718,8 +1784,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DATA DO FLUXO *</label>
+                        <label htmlFor="cf-date" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DATA DO FLUXO *</label>
                         <input 
+                          id="cf-date"
                           type="date"
                           required
                           value={cashFlowForm.date}
@@ -1770,10 +1837,30 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                   <div className="flex flex-wrap gap-2 text-xs select-none">
                     
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const excelData = cashFlow.map(cf => ({
+                          Data: cf.date,
+                          Descrição: cf.description,
+                          Categoria: cf.category,
+                          Tipo: cf.type === 'revenue' ? 'Entrada' : 'Saída',
+                          Valor: cf.amount,
+                          Reconciliado: cf.isReconciled ? 'Sim' : 'Não',
+                          'Fundo Reserva': cf.isContingencyFunded ? 'Sim' : 'Não'
+                        }));
+                        exportToExcel(excelData, `Fluxo_De_Caixa_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, 'Fluxo de Caixa');
+                      }}
+                      className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900 font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      Exportar Excel
+                    </button>
+
                     {/* Month Filter */}
                     <div className="flex items-center bg-stone-950 px-2 py-1 rounded border border-stone-800 text-[10px] font-mono">
                       <Filter className="w-3.5 h-3.5 text-stone-500 mr-1.5" />
-                      <span className="text-stone-450 uppercase font-bold mr-1">Mês:</span>
+                      <span className="text-stone-455 uppercase font-bold mr-1">Mês:</span>
                       <select
                         value={cfMonthFilter}
                         onChange={e => setCfMonthFilter(e.target.value)}
@@ -1788,7 +1875,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                     {/* Category Filter */}
                     <div className="flex items-center bg-stone-950 px-2 py-1 rounded border border-stone-800 text-[10px] font-mono">
-                      <span className="text-stone-450 uppercase font-bold mr-1">Cat:</span>
+                      <span className="text-stone-455 uppercase font-bold mr-1">Cat:</span>
                       <select
                         value={cfCategoryFilter}
                         onChange={e => setCfCategoryFilter(e.target.value)}
@@ -1820,7 +1907,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     <tbody className="divide-y divide-stone-850 bg-stone-950/20">
                       {filteredCashFlow.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="text-center p-8 text-stone-500 italic">Nenhuma movimentação para os filtros ativos.</td>
+                          <td colSpan={7} className="p-8">
+                            <div className="text-center py-8 px-4 bg-stone-950/30 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                              <ArrowUpRight className="w-8 h-8 text-stone-700/60" />
+                              <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhuma Transação no Livro-Caixa</p>
+                              <p className="text-[10px] text-stone-500 max-w-xs">Cadastre receitas e despesas no formulário lateral para monitorar o fluxo de caixa do M1-2026.</p>
+                            </div>
+                          </td>
                         </tr>
                       ) : (
                         filteredCashFlow.map(cf => (
@@ -1934,7 +2027,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                 </div>
 
                 <div className="bg-stone-950 text-stone-500 border border-stone-850 p-2.5 rounded text-[9px] font-mono leading-relaxed mt-5">
-                  🛡️ Recomenda-se estipular entre 10% e 15% para suportar correções de usinagem e re-cortes em aços especiais.
+                  🛡️ Recomenda-se estipular entre 10% e 15% para suportar correções de usinagem e re-impressão em blocos de ABS.
                 </div>
               </div>
 
@@ -1947,7 +2040,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       <p className="text-[10px] text-stone-400 mt-0.5">Visão do Fundo de Segurança para Imprevistos Mecânicos</p>
                     </div>
                     <span className="text-[9px] font-mono bg-stone-950 border border-stone-800 text-stone-400 px-3 py-1 rounded">
-                      REGULAMENTO FSAE
+                      REGULAMENTO F1
                     </span>
                   </div>
 
@@ -2064,10 +2157,10 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                 <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1">
                   {unreconciledItems.length === 0 ? (
-                    <div className="text-center py-16 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-3">
+                    <div className="text-center py-16 bg-stone-950/20 border border-dashed border-stone-800 rounded-lg flex flex-col items-center justify-center space-y-3 w-full animate-fade-in">
                       <CheckCircle className="w-8 h-8 text-emerald-500" />
-                      <p className="text-xs text-stone-400 italic">Espetacular! Tudo conciliado no caixa da equipe.</p>
-                      <p className="text-[10px] text-stone-500">Nenhum lançamento pendente encontrado para reconciliar.</p>
+                      <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Espetacular! Tudo conciliado</p>
+                      <p className="text-[10px] text-stone-500">Nenhum lançamento pendente encontrado para reconciliar no caixa.</p>
                     </div>
                   ) : (
                     unreconciledItems.map(item => {

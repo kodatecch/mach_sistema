@@ -37,6 +37,7 @@ import {
   Cell
 } from 'recharts';
 import { Stakeholder, CommunicationMatrix, CommunicationLog, Project, User } from '../types';
+import { exportToExcel } from '../utils/excelExport';
 
 interface StakeholdersProps {
   activeProject: Project;
@@ -75,9 +76,9 @@ const INITIAL_STAKEHOLDERS = (projectId: string): Stakeholder[] => [
     projectId,
     name: 'Jorge Vasconcelos',
     role: 'Juiz Avaliador / Consultor Técnico',
-    email: 'jorge.fsae@avaliadores.org',
+    email: 'jorge.f1@avaliadores.org',
     phone: '',
-    organization: 'FSAE Brasil',
+    organization: 'F1 in Schools Brasil',
     powerLevel: 3,
     interestLevel: 4,
     engagementLevel: 'supportive'
@@ -89,7 +90,7 @@ const INITIAL_STAKEHOLDERS = (projectId: string): Stakeholder[] => [
     role: 'Líder Executiva da Organização',
     email: 'mariana.lider@machone.test',
     phone: '(41) 99888-2233',
-    organization: 'Equipe Mach One Combustion',
+    organization: 'Equipe Mach One STEM Racing',
     powerLevel: 4,
     interestLevel: 5,
     engagementLevel: 'leading'
@@ -183,6 +184,7 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
   const [matrices, setMatrices] = useState<CommunicationMatrix[]>([]);
   const [logs, setLogs] = useState<CommunicationLog[]>([]);
   const [dbStateBadge, setDbStateBadge] = useState<string>('Buscando conexões...');
+  const [isLoading, setIsLoading] = useState(true);
 
   // Backend Integration Status
   const [isBackendActive, setIsBackendActive] = useState<boolean>(false);
@@ -232,7 +234,12 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
   // --- DATABASE & SYNC ENGINES ---
   useEffect(() => {
+    setIsLoading(true);
     loadAllData();
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
   }, [activeProject.id]);
 
   useEffect(() => {
@@ -711,8 +718,38 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
         </div>
       </div>
 
-      {/* 2. SUBTAB I: MAP & INTERACTIVE SEGMENTATIONS */}
-      {subTab === 'map' && (
+      {isLoading ? (
+        subTab === 'map' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-4 space-y-4">
+              <div className="mach-skeleton h-[360px]" />
+              <div className="mach-skeleton h-[150px]" />
+            </div>
+            <div className="lg:col-span-8 space-y-6">
+              <div className="mach-skeleton h-[380px]" />
+              <div className="mach-skeleton h-[280px]" />
+            </div>
+          </div>
+        ) : subTab === 'comm_matrix' ? (
+          <div className="space-y-4">
+            <div className="mach-skeleton h-[80px]" />
+            <div className="mach-skeleton h-[400px]" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 space-y-4">
+              <div className="mach-skeleton h-[420px]" />
+              <div className="mach-skeleton h-[120px]" />
+            </div>
+            <div className="lg:col-span-7 space-y-4">
+              <div className="mach-skeleton h-[520px]" />
+            </div>
+          </div>
+        )
+      ) : (
+        <>
+          {/* 2. SUBTAB I: MAP & INTERACTIVE SEGMENTATIONS */}
+          {subTab === 'map' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* LEFT COLUMN: LIST FILTER & FORMS */}
@@ -723,15 +760,39 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                 <span className="font-mono font-black text-rose-500 uppercase tracking-widest flex items-center gap-1">
                   <Sliders className="w-3.5" /> Stakeholders ({filteredStakeholdersList.length})
                 </span>
-                <button
-                  onClick={() => {
-                    resetStkForm();
-                    setShowAddStkForm(!showAddStkForm);
-                  }}
-                  className="bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900 hover:border-red-600 text-[10px] font-sans font-bold px-2 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
-                >
-                  {showAddStkForm ? 'Fechar Form' : '+ Cadastrar'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const excelData = categorizedStakeholders.map(s => ({
+                        Nome: s.name,
+                        Papel: translateRole(s.role),
+                        Organização: s.organization || 'N/A',
+                        'E-mail': s.email || 'N/A',
+                        Telefone: s.phone || 'N/A',
+                        'Grau de Poder': s.powerLevel,
+                        'Grau de Interesse': s.interestLevel,
+                        'Nível de Engajamento': s.engagementLevel,
+                        Quadrante: s.quadrant.replace('_', ' ').toUpperCase()
+                      }));
+                      exportToExcel(excelData, `Stakeholders_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, 'Stakeholders');
+                    }}
+                    className="bg-emerald-955/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900 font-extrabold uppercase py-1 px-2.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                    title="Exportar Stakeholders para Excel"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Excel
+                  </button>
+                  <button
+                    onClick={() => {
+                      resetStkForm();
+                      setShowAddStkForm(!showAddStkForm);
+                    }}
+                    className="bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900 hover:border-red-600 text-[10px] font-sans font-bold px-2 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    {showAddStkForm ? 'Fechar Form' : '+ Cadastrar'}
+                  </button>
+                </div>
               </div>
 
               {/* SEARCH BAR & CATEGORY BAR */}
@@ -785,8 +846,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                   </div>
 
                   <div>
-                    <label className="mach-label text-stone-400">Nome Completo</label>
+                    <label htmlFor="stk-form-name" className="mach-label text-stone-400">Nome Completo</label>
                     <input 
+                      id="stk-form-name"
                       type="text"
                       className="mach-input"
                       required
@@ -798,8 +860,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mach-label text-stone-400">Papel / Categoria</label>
+                      <label htmlFor="stk-form-role" className="mach-label text-stone-400">Papel / Categoria</label>
                       <select 
+                        id="stk-form-role"
                         className="mach-input font-medium select-none"
                         value={stkRole}
                         onChange={e => setStkRole(e.target.value)}
@@ -813,8 +876,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                       </select>
                     </div>
                     <div>
-                      <label className="mach-label text-stone-400">Organização</label>
+                      <label htmlFor="stk-form-org" className="mach-label text-stone-400">Organização</label>
                       <input 
+                        id="stk-form-org"
                         type="text"
                         className="mach-input"
                         placeholder="Ex: UTFPR ou Sponsor Co."
@@ -826,8 +890,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mach-label text-stone-400">E-mail</label>
+                      <label htmlFor="stk-form-email" className="mach-label text-stone-400">E-mail</label>
                       <input 
+                        id="stk-form-email"
                         type="email"
                         className="mach-input font-mono text-[10.5px]"
                         placeholder="contato@mail.com"
@@ -836,8 +901,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                       />
                     </div>
                     <div>
-                      <label className="mach-label text-stone-400">Telefone</label>
+                      <label htmlFor="stk-form-phone" className="mach-label text-stone-400">Telefone</label>
                       <input 
+                        id="stk-form-phone"
                         type="text"
                         className="mach-input font-mono"
                         placeholder="(41) 9999-9999"
@@ -848,13 +914,14 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                   </div>
 
                   {/* SLIDERS FOR POWER & INTEREST (Immediate Scatter update!) */}
-                  <div className="bg-stone-950 p-2.5 rounded border border-stone-850 space-y-2.5">
+                  <div className="bg-stone-955 p-2.5 rounded border border-stone-850 space-y-2.5">
                     <div>
                       <div className="flex justify-between items-center text-[10.5px]">
-                        <span className="font-mono text-stone-400 font-bold uppercase">Nível de Poder (1-5)</span>
+                        <label htmlFor="stk-form-power" className="font-mono text-stone-400 font-bold uppercase cursor-pointer">Nível de Poder (1-5)</label>
                         <span className="font-bold text-red-500 font-mono bg-stone-900 border border-stone-850 px-1.5 rounded">{stkPower}</span>
                       </div>
                       <input 
+                        id="stk-form-power"
                         type="range"
                         min="1"
                         max="5"
@@ -868,10 +935,11 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
                     <div>
                       <div className="flex justify-between items-center text-[10.5px]">
-                        <span className="font-mono text-stone-400 font-bold uppercase">Nível de Interesse (1-5)</span>
+                        <label htmlFor="stk-form-interest" className="font-mono text-stone-400 font-bold uppercase cursor-pointer">Nível de Interesse (1-5)</label>
                         <span className="font-bold text-red-500 font-mono bg-stone-900 border border-stone-850 px-1.5 rounded">{stkInterest}</span>
                       </div>
                       <input 
+                        id="stk-form-interest"
                         type="range"
                         min="1"
                         max="5"
@@ -885,8 +953,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                   </div>
 
                   <div>
-                    <label className="mach-label text-stone-400">Nível de Engajamento Atual</label>
+                    <label htmlFor="stk-form-engagement" className="mach-label text-stone-400">Nível de Engajamento Atual</label>
                     <select 
+                      id="stk-form-engagement"
                       className="mach-input"
                       value={stkEngagement}
                       onChange={e => setStkEngagement(e.target.value)}
@@ -921,8 +990,10 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
               {!showAddStkForm && (
                 <div className="max-h-[300px] overflow-y-auto pr-1 space-y-2">
                   {filteredStakeholdersList.length === 0 ? (
-                    <div className="text-center py-6 text-stone-500 border border-dashed border-stone-850 rounded text-xs select-none">
-                      Nenhum stakeholder corresponde aos critérios fornecidos.
+                    <div className="text-center py-8 px-4 bg-stone-955/20 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 font-mono w-full">
+                      <Users className="w-8 h-8 text-stone-755/65 animate-pulse" />
+                      <p className="text-[10px] text-stone-300 font-bold uppercase tracking-wider">Nenhum Stakeholder Encontrado</p>
+                      <p className="text-[9px] text-stone-550 max-w-xs text-center">Não existem atores correspondentes aos filtros ativos.</p>
                     </div>
                   ) : (
                     filteredStakeholdersList.map(stk => (
@@ -1206,8 +1277,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
               </span>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="mach-label text-stone-400">Stakeholder Envolvido</label>
+                  <label htmlFor="mat-form-stkid" className="mach-label text-stone-400">Stakeholder Envolvido</label>
                   <select
+                    id="mat-form-stkid"
                     className="mach-input"
                     required
                     value={matStkId}
@@ -1221,8 +1293,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mach-label text-stone-400">O que Informar / Reportar (Objetivo Técnico)</label>
+                  <label htmlFor="mat-form-report" className="mach-label text-stone-400">O que Informar / Reportar (Objetivo Técnico)</label>
                   <input 
+                    id="mat-form-report"
                     type="text"
                     required
                     className="mach-input"
@@ -1233,8 +1306,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                 </div>
 
                 <div>
-                  <label className="mach-label text-stone-400">Canal de Divulgação</label>
+                  <label htmlFor="mat-form-channel" className="mach-label text-stone-400">Canal de Divulgação</label>
                   <select
+                    id="mat-form-channel"
                     className="mach-input"
                     value={matChannel}
                     onChange={e => setMatChannel(e.target.value)}
@@ -1249,8 +1323,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="mach-label text-stone-400">Frequência</label>
+                  <label htmlFor="mat-form-frequency" className="mach-label text-stone-400">Frequência</label>
                   <select
+                    id="mat-form-frequency"
                     className="mach-input font-mono"
                     value={matFrequency}
                     onChange={e => setMatFrequency(e.target.value)}
@@ -1264,8 +1339,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="mach-label text-stone-400">Responsável pela Comunicação (Owner)</label>
+                  <label htmlFor="mat-form-responsible" className="mach-label text-stone-400">Responsável pela Comunicação (Owner)</label>
                   <input 
+                    id="mat-form-responsible"
                     type="text"
                     required
                     className="mach-input"
@@ -1310,8 +1386,19 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
               <tbody className="divide-y divide-stone-950 font-sans">
                 {matrices.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center p-6 text-stone-500 select-none">
-                      Nenhuma diretriz de plano de comunicações registrada.
+                    <td colSpan={6} className="p-8">
+                      <div className="text-center py-8 px-4 bg-stone-955/20 border border-dashed border-stone-850 rounded flex flex-col items-center justify-center space-y-2 font-mono w-full">
+                        <FileSpreadsheet className="w-8 h-8 text-stone-755/65" />
+                        <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhuma Diretriz de Comunicação</p>
+                        <p className="text-[10px] text-stone-500 max-w-xs">Crie alinhamentos para garantir que todos os atores estratégicos sejam informados.</p>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingMatrixRow(true)}
+                          className="mt-2 px-3 py-1 bg-red-650 hover:bg-red-700 text-white text-[10px] font-bold rounded uppercase tracking-wider font-mono cursor-pointer"
+                        >
+                          + Criar Diretriz
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -1360,7 +1447,7 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
             <div className="space-y-1">
               <span className="font-mono text-[10px] uppercase font-black tracking-widest text-[#DC2626]">Instrução PMI • Comunicação Ativa:</span>
               <p className="text-stone-400 leading-relaxed text-[11px]">
-                A Matriz de Comunicação garante a circulação constante de relatórios para as lideranças (Keep Satisfied/Manage Closely), evitando furos de alinhamentos fundamentais no chassis e caixa de contingências de patrocínios da competição Formula SAE.
+                A Matriz de Comunicação garante a circulação constante de relatórios para as lideranças (Keep Satisfied/Manage Closely), evitando furos de alinhamentos fundamentais no chassi do dragster e captação de patrocínios da competição F1 in Schools.
               </p>
             </div>
           </div>
@@ -1410,8 +1497,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                 <form onSubmit={handleAddLogSubmit} className="space-y-3.5 pt-1 border-t border-stone-850 text-xs text-left">
                   
                   <div>
-                    <label className="mach-label text-stone-400">Proponente Principal (Stakeholder)</label>
+                    <label htmlFor="log-form-stkid" className="mach-label text-stone-400">Proponente Principal (Stakeholder)</label>
                     <select
+                      id="log-form-stkid"
                       className="mach-input"
                       required
                       value={logStkId}
@@ -1426,8 +1514,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="mach-label text-stone-400">Data do Alinhamento</label>
+                      <label htmlFor="log-form-date" className="mach-label text-stone-400">Data do Alinhamento</label>
                       <input 
+                        id="log-form-date"
                         type="date"
                         className="mach-input font-mono font-bold text-center"
                         required
@@ -1436,8 +1525,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                       />
                     </div>
                     <div>
-                      <label className="mach-label text-stone-400">Canal / Meio</label>
+                      <label htmlFor="log-form-channel" className="mach-label text-stone-400">Canal / Meio</label>
                       <input 
+                        id="log-form-channel"
                         type="text"
                         className="mach-input font-medium"
                         required
@@ -1449,8 +1539,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                   </div>
 
                   <div>
-                    <label className="mach-label text-stone-400">Resumo da Conversa (Summary / Ata)</label>
+                    <label htmlFor="log-form-summary" className="mach-label text-stone-400">Resumo da Conversa (Summary / Ata)</label>
                     <textarea
+                      id="log-form-summary"
                       rows={4}
                       className="mach-input font-serif text-[11.5px] leading-relaxed p-2"
                       required
@@ -1461,8 +1552,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
                   </div>
 
                   <div>
-                    <label className="mach-label text-stone-400">Marcadores de Pontos-Chave (Separados por vírgula)</label>
+                    <label htmlFor="log-form-keypoints" className="mach-label text-stone-400">Marcadores de Pontos-Chave (Separados por vírgula)</label>
                     <input 
+                      id="log-form-keypoints"
                       type="text"
                       className="mach-input font-mono text-[11px]"
                       placeholder="Ex: Patrocínio, Cura do Carbono, Monocoque"
@@ -1558,8 +1650,17 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
             <div className="space-y-4 max-h-[520px] overflow-y-auto pr-1">
               {filteredLogsList.length === 0 ? (
-                <div className="text-center py-12 text-stone-500 border border-dashed border-stone-850 rounded text-xs select-none bg-stone-905">
-                  Nenhuma ata ou conversa registrada para este filtro de busca.
+                <div className="text-center py-12 px-4 bg-stone-955/20 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 font-mono w-full">
+                  <MessageSquare className="w-8 h-8 text-stone-755/65" />
+                  <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhuma Ata de Alinhamento</p>
+                  <p className="text-[10px] text-stone-500 max-w-xs text-center">Registre a primeira conversa, decisão técnica ou áudio de alinhamento com a equipe.</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddLogForm(true)}
+                    className="mt-2 px-3 py-1 bg-red-650 hover:bg-red-700 text-white text-[10px] font-bold rounded uppercase tracking-wider font-mono cursor-pointer"
+                  >
+                    + Registrar Ata
+                  </button>
                 </div>
               ) : (
                 filteredLogsList.map(log => {
@@ -1641,6 +1742,8 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
           </div>
 
         </div>
+      )}
+        </>
       )}
 
     </div>

@@ -46,32 +46,67 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
   const [showTimelineSlider, setShowTimelineSlider] = useState(false);
   const [hoveredWheelParam, setHoveredWheelParam] = useState<string | null>(null);
 
-  // High-performance Project Management PM metrics for Mach Wheel
-  const wheelParams = useMemo(() => [
-    { name: 'Engenharia', mach1: 75, mach2: 88, unit: '%', desc: 'Aprovação de simulações de fadiga FEA, tolerâncias de usinagem e CFD dinâmico.' },
-    { name: 'Gestão de Projeto', mach1: 80, mach2: 92, unit: '%', desc: 'Aderência a prazos da EAP, atualização de status e ritmo geral de produtividade.' },
-    { name: 'Financeiro', mach1: 70, mach2: 85, unit: '%', desc: 'Controle orçamentário CPI e captação ativa de recursos de patrocinadores federais.' },
-    { name: 'Social', mach1: 65, mach2: 80, unit: '%', desc: 'Atração de público, mídias estruturadas em STEM Racing e engajamento comunitário.' },
-    { name: 'Pit Display', mach1: 72, mach2: 90, unit: '%', desc: 'Ergonomia de box, atendimento corporativo e conformidade técnica dos juízes.' },
-    { name: 'Apresentação Verbal', mach1: 78, mach2: 91, unit: '%', desc: 'Pitch de plano de negócios para investidores simulados da F1.' },
-  ], []);
+  const [machWheelScores, setMachWheelScores] = useState<any[]>(() => {
+    const data = localStorage.getItem('stem_mach_wheel_scores');
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        console.error('Error parsing mach_wheel_scores', e);
+      }
+    }
+    return [
+      { id: 'score_eng', projectId: 'proj_fsae_2026', category: 'Engineering Portfolio', scoreBefore: 5.5, scoreAfter: 8.5 },
+      { id: 'score_ent', projectId: 'proj_fsae_2026', category: 'Enterprise Portfolio', scoreBefore: 6.0, scoreAfter: 9.0 },
+      { id: 'score_soc', projectId: 'proj_fsae_2026', category: 'Social Development / Sustainability Portfolio', scoreBefore: 4.0, scoreAfter: 7.5 },
+      { id: 'score_verb', projectId: 'proj_fsae_2026', category: 'Verbal Presentation', scoreBefore: 5.0, scoreAfter: 8.0 },
+      { id: 'score_pit', projectId: 'proj_fsae_2026', category: 'Pit Display', scoreBefore: 4.5, scoreAfter: 8.5 },
+      { id: 'score_id', projectId: 'proj_fsae_2026', category: 'Team Identity', scoreBefore: 6.5, scoreAfter: 9.5 }
+    ];
+  });
+
+  const [regulationRules, setRegulationRules] = useState<any[]>(() => {
+    const data = localStorage.getItem('stem_regulation_rules');
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        console.error('Error parsing regulation_rules', e);
+      }
+    }
+    return [
+      { id: 'rule_weight', projectId: 'proj_fsae_2026', parameterName: 'weight_limit_g', limitValue: 50.0, unit: 'g', description: 'Peso mínimo do carrinho sem cartucho de CO2' },
+      { id: 'rule_length', projectId: 'proj_fsae_2026', parameterName: 'length_limit_mm', limitValue: 210.0, unit: 'mm', description: 'Comprimento total máximo permitido para o dragster' },
+      { id: 'rule_width', projectId: 'proj_fsae_2026', parameterName: 'width_limit_mm', limitValue: 65.0, unit: 'mm', description: 'Largura máxima com as rodas traseiras montadas' },
+      { id: 'rule_co2', projectId: 'proj_fsae_2026', parameterName: 'co2_canister_g', limitValue: 8.0, unit: 'g', description: 'Massa padrão do cartucho de gás carbônico descartável' }
+    ];
+  });
+
+  const categoryDescs: Record<string, string> = {
+    'Engineering Portfolio': 'Usinagem CNC de bloco ABS, CFD aerodinâmica, WBS cronograma e projeto mecânico.',
+    'Enterprise Portfolio': 'Business plan, captação de patrocínios e fluxo de caixa financeiro.',
+    'Social Development / Sustainability Portfolio': 'Projetos sustentáveis (neutralização de CO2), incentivo STEM e impacto comunitário.',
+    'Verbal Presentation': 'Apresentação oral e pitch do projeto técnico e administrativo da escuderia.',
+    'Pit Display': 'Ergonomia de box, design de interação do estande físico e marketing corporativo.',
+    'Team Identity': 'Identidade de marca, uniformes oficiais da escuderia e marketing de mídias sociais.'
+  };
 
   // Format dataset for recharts Radar chart
   const radarData = useMemo(() => {
-    return wheelParams.map(param => ({
-      subject: param.name,
-      'Temporada Atual (2026)': param.mach2,
-      'Temporada Anterior (2025)': param.mach1,
-      fullMark: 100,
+    return machWheelScores.map(score => ({
+      subject: score.category,
+      'Temporada Atual (2026)': score.scoreAfter,
+      'Temporada Anterior (2025)': score.scoreBefore,
+      fullMark: 10,
     }));
-  }, [wheelParams]);
+  }, [machWheelScores]);
 
   // 1. CALCULATE REAL-TIME EVM METRICS
   const evm = useMemo(() => {
     const BAC = tasks.reduce((sum, t) => sum + t.plannedCost, 0);
 
     const AC = transactions
-      .filter(tr => tr.type === 'despesa')
+      .filter(tr => tr.type === 'despesa' || tr.type === 'expense')
       .reduce((sum, tr) => sum + tr.amount, 0);
 
     const EV = tasks.reduce((sum, t) => sum + (t.plannedCost * (t.progress / 100)), 0);
@@ -157,7 +192,7 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
       });
 
       transactions.forEach(tr => {
-        if (tr.type === 'despesa' && tr.date <= targetDateStr) {
+        if ((tr.type === 'despesa' || tr.type === 'expense') && tr.date <= targetDateStr) {
           ptAC += tr.amount;
         }
       });
@@ -429,7 +464,7 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
           </div>
           
           <div className="mt-4 p-2.5 bg-stone-50 dark:bg-stone-900/60 rounded border border-stone-150 dark:border-stone-800/80 text-[11px] flex justify-between items-center text-stone-500 font-mono">
-            <span>📈 Aderência e desvios de escopo acumulados da temporada FSAE.</span>
+            <span>📈 Aderência e desvios de escopo acumulados da temporada F1 in Schools.</span>
             <span>STATUS: <span className={`font-bold ${evm.CPI >= 0.95 && evm.SPI >= 0.95 ? 'text-emerald-600' : 'text-amber-600'}`}>{evm.CPI >= 0.95 && evm.SPI >= 0.95 ? 'CONFORME' : 'ATENÇÃO'}</span></span>
           </div>
         </div>
@@ -476,7 +511,7 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
                     <PolarGrid stroke="#e5e7eb" className="dark:stroke-[#202020]" />
                     <PolarAngleAxis dataKey="subject" stroke="#78716c" fontSize={9} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#a8a29e" fontSize={8} />
+                    <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#a8a29e" fontSize={8} />
                     
                     {selectedSeason !== 'mach2' && (
                       <Radar 
@@ -503,41 +538,42 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
 
               {/* METER DETAILED LIST */}
               <div className="w-full mt-2.5 space-y-1 max-h-44 overflow-y-auto pr-1">
-                {wheelParams.map((param) => {
-                  const isHovered = hoveredWheelParam === param.name;
+                {machWheelScores.map((score) => {
+                  const isHovered = hoveredWheelParam === score.category;
+                  const desc = categoryDescs[score.category] || '';
                   return (
                     <div 
-                      key={param.name} 
+                      key={score.category} 
                       className={`p-1.5 rounded transition text-xs border ${
                         isHovered 
                           ? 'bg-stone-50 dark:bg-stone-900 border-[#DC2626]/30' 
                           : 'bg-transparent border-transparent'
                       }`}
-                      onMouseEnter={() => setHoveredWheelParam(param.name)}
+                      onMouseEnter={() => setHoveredWheelParam(score.category)}
                       onMouseLeave={() => setHoveredWheelParam(null)}
                     >
                       <div className="flex justify-between items-center text-[11px]">
                         <span className="font-semibold text-stone-600 dark:text-stone-300 flex items-center gap-1.5">
                           {isHovered && <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626]"></span>}
-                          {param.name}
+                          {score.category}
                         </span>
                         <div className="font-mono flex items-center gap-2">
                           {selectedSeason !== 'mach2' && (
-                            <span className="text-stone-400 line-through text-[10px]">{param.mach1}{param.unit}</span>
+                            <span className="text-stone-400 line-through text-[10px]">{score.scoreBefore.toFixed(1)}/10</span>
                           )}
                           {selectedSeason !== 'mach1' && (
-                            <span className="text-[#DC2626] font-bold text-xs">{param.mach2}{param.unit}</span>
+                            <span className="text-[#DC2626] font-bold text-xs">{score.scoreAfter.toFixed(1)}/10</span>
                           )}
                           {selectedSeason === 'comparativo' && (
                             <span className="text-[10px] text-emerald-600 font-bold whitespace-nowrap">
-                              (+{Math.round(((param.mach2 - param.mach1) / param.mach1) * 100)}%)
+                              (+{Math.round(((score.scoreAfter - score.scoreBefore) / score.scoreBefore) * 100)}%)
                             </span>
                           )}
                         </div>
                       </div>
                       {isHovered && (
                         <p className="text-[10px] text-stone-500 mt-1">
-                          {param.desc}
+                          {desc}
                         </p>
                       )}
                     </div>
@@ -643,6 +679,55 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
             )}
           </div>
         </div>
+      </div>
+
+      {/* TECHNICAL REGULATION PANEL */}
+      <div className="mach-card border border-stone-250 dark:border-stone-850 bg-stone-50 dark:bg-stone-900/40 p-4 rounded-lg space-y-4">
+        <details className="group">
+          <summary className="flex justify-between items-center font-bold text-sm text-stone-900 dark:text-stone-150 cursor-pointer list-none select-none">
+            <span className="flex items-center gap-2">
+              <Sliders className="text-[#DC2626] w-4.5 h-4.5" />
+              Regulamento Técnico da Temporada (CO2 Dragster)
+            </span>
+            <span className="text-stone-400 group-open:rotate-180 transition-transform duration-200">▼</span>
+          </summary>
+          
+          <div className="mt-4 space-y-4 pt-2 border-t border-stone-200 dark:border-stone-800">
+            <p className="text-xs text-stone-400 font-sans">
+              Esses limites definem as regras técnicas e dimensionais da temporada para o dragster de CO2. 
+              Mudanças nestes valores são salvas localmente e integradas dinamicamente às validações de escopo e matriz de riscos.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {regulationRules.map((rule) => (
+                <div key={rule.id} className="p-3 bg-white dark:bg-stone-950 rounded border border-stone-250 dark:border-stone-850 flex flex-col justify-between gap-2">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-mono font-bold text-stone-450 uppercase tracking-wide block">
+                      Parâmetro: <code className="text-[#DC2626]">{rule.parameterName}</code>
+                    </span>
+                    <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">{rule.description}</h4>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="number"
+                      value={rule.limitValue}
+                      onChange={(e) => {
+                        const newVal = parseFloat(e.target.value) || 0;
+                        const updatedRules = regulationRules.map(r => r.id === rule.id ? { ...r, limitValue: newVal } : r);
+                        setRegulationRules(updatedRules);
+                        localStorage.setItem('stem_regulation_rules', JSON.stringify(updatedRules));
+                        window.dispatchEvent(new CustomEvent('stem_rules_changed'));
+                      }}
+                      className="w-24 p-1 text-xs border border-stone-300 dark:border-stone-800 rounded bg-stone-50 dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-mono text-center"
+                    />
+                    <span className="text-xs font-mono text-stone-550 font-bold">{rule.unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </details>
       </div>
     </div>
   );

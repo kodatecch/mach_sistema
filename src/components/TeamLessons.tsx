@@ -65,7 +65,7 @@ export default function TeamLessons({
   const [healthChecks, setHealthChecks] = useState<TeamHealthCheck[]>(() => {
     const local = localStorage.getItem('mach_health_checks');
     return local ? JSON.parse(local) : [
-      { id: 'h1', date: '25/05/2026', communication: 4, alignment: 4, motivation: 5, workload: 3, cooperation: 5, observations: 'Início da temporada com alta energia. Ajustes no laboratório de compósitos necessários.' },
+      { id: 'h1', date: '25/05/2026', communication: 4, alignment: 4, motivation: 5, workload: 3, cooperation: 5, observations: 'Início da temporada com alta energia. Ajustes no laboratório de manufatura/CNC necessários.' },
       { id: 'h2', date: '08/06/2026', communication: 4, alignment: 5, motivation: 4, workload: 4, cooperation: 5, observations: 'Convergência das modelagens de bico aerodinâmico e entrega dos cronogramas WBS.' }
     ];
   });
@@ -420,7 +420,7 @@ export default function TeamLessons({
             <div className="bg-stone-50 dark:bg-stone-900/50 p-4 border border-stone-250 dark:border-stone-850 rounded-lg text-xs leading-relaxed text-stone-550 flex gap-2">
               <Activity className="w-4.5 h-4.5 text-[#DC2626] shrink-0 mt-0.5" />
               <p>
-                <strong>Controle Semanal de Clima Operacional:</strong> Monitore as avaliações de sanidade do time técnico. O score expressa o equilíbrio entre carga de trabalho e dedicação coletiva para evitar o esgotamento (burnout) no projeto FSAE.
+                <strong>Controle Semanal de Clima Operacional:</strong> Monitore as avaliações de sanidade do time técnico. O score expressa o equilíbrio entre carga de trabalho e dedicação coletiva para evitar o esgotamento (burnout) no projeto F1 in Schools.
               </p>
             </div>
 
@@ -624,7 +624,7 @@ export default function TeamLessons({
                   required
                   value={hcObs}
                   onChange={e => setHcObs(e.target.value)}
-                  placeholder="ex. Equipe motivada após teste bem-sucedido de FEA, mas necessita alívio na laminação..." 
+                  placeholder="ex. Equipe motivada após teste bem-sucedido de CFD, mas necessita alívio na usinagem CNC..." 
                   className="mach-input"
                 />
               </div>

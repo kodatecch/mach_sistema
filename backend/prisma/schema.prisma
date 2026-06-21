@@ -61,6 +61,8 @@ model Project {
   scopeChanges          ScopeChangeLog[]
   statusReports         StatusReport[]
   evmSnapshots          EvmSnapshot[]
+  regulationRules       RegulationRule[]
+  machWheelScores       MachWheelScore[]
 
   @@map("projects")
 }
@@ -402,6 +404,46 @@ model EvmSnapshot {
 
   @@unique([projectId, snapshotDate])
   @@map("evm_snapshots")
+}
+
+model RegulationRule {
+  id            String   @id @default(uuid())
+  projectId     String   @map("project_id")
+  parameterName String   @map("parameter_name")
+  limitValue    Float    @map("limit_value")
+  unit          String
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("regulation_rules")
+}
+
+model JudgingCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("judging_categories")
+}
+
+model MachWheelScore {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  category    String   // e.g. "Engineering Portfolio"
+  scoreBefore Float    @map("score_before") // scale 1-10
+  scoreAfter  Float    @map("score_after")  // scale 1-10
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, category])
+  @@map("mach_wheel_scores")
 }
 
 

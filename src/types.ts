@@ -75,6 +75,10 @@ export interface Task {
   totalFloat?: number;
   comment?: string | null;
 
+  // EVM & Progress fields for dashboard
+  progress?: number;
+  plannedCost?: number;
+
   createdAt?: string;
   updatedAt?: string;
 }
@@ -203,4 +207,44 @@ export interface UserPermissions {
   isMentor: boolean;
   isAdmin: boolean;
 }
+
+export interface RegulationRule {
+  id: string;
+  projectId: string;
+  parameterName: string;
+  limitValue: number;
+  unit: string;
+  description: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JudgingCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MachWheelScore {
+  id: string;
+  projectId: string;
+  category: string;
+  scoreBefore: number; // 1-10
+  scoreAfter: number;  // 1-10
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Transaction {
+  id: string;
+  projectId: string;
+  description: string;
+  type: 'revenue' | 'expense' | 'despesa' | 'receita';
+  amount: number;
+  date: string;
+  isReconciled: boolean;
+}
+
 
