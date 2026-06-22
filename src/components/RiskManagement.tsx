@@ -28,7 +28,7 @@ import {
   Star,
   ExternalLink
 } from 'lucide-react';
-import { Risk, ScopeChangeLog, StatusReport, Project, User as ProjectUser } from '../types';
+import { Risk, ScopeChangeLog, StatusReport, Project, User as ProjectUser, OrgConfig } from '../types';
 import EvmDashboard from './EvmDashboard';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportToExcel } from '../utils/excelExport';
@@ -37,6 +37,7 @@ interface RiskManagementProps {
   activeProject: Project;
   activeUser: ProjectUser;
   permissions?: any;
+  config?: OrgConfig;
 }
 
 const DEFAULT_RISKS = (projectId: string): Risk[] => [
@@ -148,7 +149,7 @@ const DEFAULT_SCOPE_CHANGES = (projectId: string): ScopeChangeLog[] => [
   }
 ];
 
-export default function RiskManagement({ activeProject, activeUser, permissions }: RiskManagementProps) {
+export default function RiskManagement({ activeProject, activeUser, permissions, config }: RiskManagementProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -159,7 +160,24 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
   }, []);
 
   // Navigation: Sub-tabs within Risks e Monitoramento
-  const [subTab, setSubTab] = useState<'riscos' | 'relatorios' | 'escopo' | 'evm'>('riscos');
+  const enabledTabs = useMemo(() => {
+    const tabs: ('riscos' | 'relatorios' | 'escopo' | 'evm')[] = [];
+    if (config?.enableRisksList !== false) tabs.push('riscos');
+    if (config?.enableRisksReports !== false) tabs.push('relatorios');
+    if (config?.enableRisksScope !== false) tabs.push('escopo');
+    if (config?.enableRisksEvm !== false) tabs.push('evm');
+    return tabs;
+  }, [config]);
+
+  const [subTab, setSubTab] = useState<'riscos' | 'relatorios' | 'escopo' | 'evm'>(() => {
+    return enabledTabs[0] || 'riscos';
+  });
+
+  useEffect(() => {
+    if (enabledTabs.length > 0 && !enabledTabs.includes(subTab)) {
+      setSubTab(enabledTabs[0]);
+    }
+  }, [enabledTabs, subTab]);
 
   // Backend state indicator
   const [isBackendActive, setIsBackendActive] = useState(false);
@@ -636,75 +654,70 @@ export default function RiskManagement({ activeProject, activeUser, permissions 
       {/* HEADER WITH METADATA BADGES */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-stone-900 border border-stone-850 rounded-lg gap-4">
         <div>
-          <span className="text-[9px] bg-red-650/10 border border-red-505/25 text-red-505 px-2 py-0.5 rounded font-mono font-bold uppercase tracking-widest">
-            Fase de Execução de Engenharia • STEM
-          </span>
           <h1 className="text-lg font-display font-black text-white uppercase tracking-wider flex items-center gap-2 mt-1">
             <ShieldAlert className="w-5.5 h-5.5 text-red-500" />
             Riscos e Monitoramento Sistemático
           </h1>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
-          <span className={`px-2.5 py-1 rounded font-bold border ${isBackendActive ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-500' : 'bg-stone-950/50 border-stone-800 text-stone-500'}`}>
-            <Database className="w-3 h-3 inline mr-1" />
-            {dbStateBadge}
-          </span>
-          <span className="bg-stone-955 border border-stone-800 text-stone-400 px-2.5 py-1 rounded font-bold uppercase">
-            Sincronização Ativa
-          </span>
-        </div>
       </div>
 
       {/* DASHBOARD LEVEL LEVEL SUB NAVIGATION */}
       <div className="flex border-b border-stone-850 gap-2 overflow-x-auto pb-px select-none">
-        <button 
-          onClick={() => { setSubTab('riscos'); setSelectedCell(null); }}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
-            subTab === 'riscos' 
-              ? 'border-red-500 text-red-502' 
-              : 'border-transparent text-stone-400 hover:text-white'
-          }`}
-        >
-          <Compass className="w-3.5 h-3.5" />
-          Qualificação de Riscos ({risks.length})
-        </button>
+        {enabledTabs.includes('riscos') && (
+          <button 
+            onClick={() => { setSubTab('riscos'); setSelectedCell(null); }}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
+              subTab === 'riscos' 
+                ? 'border-red-500 text-red-502' 
+                : 'border-transparent text-stone-400 hover:text-white'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            Qualificação de Riscos ({risks.length})
+          </button>
+        )}
 
-        <button 
-          onClick={() => setSubTab('relatorios')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
-            subTab === 'relatorios' 
-              ? 'border-red-500 text-red-502' 
-              : 'border-transparent text-stone-400 hover:text-white'
-          }`}
-        >
-          <Activity className="w-3.5 h-3.5" />
-          Relatórios de Status
-        </button>
+        {enabledTabs.includes('relatorios') && (
+          <button 
+            onClick={() => setSubTab('relatorios')}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
+              subTab === 'relatorios' 
+                ? 'border-red-500 text-red-502' 
+                : 'border-transparent text-stone-400 hover:text-white'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            Relatórios de Status
+          </button>
+        )}
 
-        <button 
-          onClick={() => setSubTab('escopo')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
-            subTab === 'escopo' 
-              ? 'border-red-500 text-red-502' 
-              : 'border-transparent text-stone-400 hover:text-white'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          Registro de Mudança de Escopo
-        </button>
+        {enabledTabs.includes('escopo') && (
+          <button 
+            onClick={() => setSubTab('escopo')}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
+              subTab === 'escopo' 
+                ? 'border-red-500 text-red-502' 
+                : 'border-transparent text-stone-400 hover:text-white'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Registro de Mudança de Escopo
+          </button>
+        )}
 
-        <button 
-          onClick={() => setSubTab('evm')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
-            subTab === 'evm' 
-              ? 'border-red-500 text-red-502' 
-              : 'border-transparent text-stone-400 hover:text-white'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" />
-          Earned Value Management (EVM)
-        </button>
+        {enabledTabs.includes('evm') && (
+          <button 
+            onClick={() => setSubTab('evm')}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
+              subTab === 'evm' 
+                ? 'border-red-500 text-red-502' 
+                : 'border-transparent text-stone-400 hover:text-white'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5" />
+            Análise EVM / Valor Agregado
+          </button>
+        )}
       </div>
 
       {/* SUGGESTION MODAL IF ACTIONABLE THRESHOLD TRIGGERS */}

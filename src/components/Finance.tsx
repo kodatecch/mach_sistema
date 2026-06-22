@@ -41,7 +41,7 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
-import { Project, User as UserType } from '../types';
+import { Project, User as UserType, OrgConfig } from '../types';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportToExcel } from '../utils/excelExport';
 
@@ -51,6 +51,7 @@ interface FinanceProps {
   memberships: any[];
   users: UserType[];
   permissions?: any;
+  config?: OrgConfig;
 }
 
 // ---------------------------------------------------------
@@ -306,12 +307,32 @@ const SEED_CASH_FLOW = (projId: string): CashFlowEntry[] => [
   }
 ];
 
-export default function Finance({ activeProject, activeUser, memberships, users, permissions }: FinanceProps) {
+export default function Finance({ activeProject, activeUser, memberships, users, permissions, config }: FinanceProps) {
   // ---------------------------------------------------------
   // SUB-TAB NAVIGATION
   // ---------------------------------------------------------
   type SubTab = 'planning' | 'quotations' | 'budget' | 'cashflow' | 'contingency' | 'reconciliation';
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('planning');
+
+  const enabledTabs = useMemo(() => {
+    const tabs: SubTab[] = [];
+    if (config?.enableFinancePlanning !== false) tabs.push('planning');
+    if (config?.enableFinanceQuotations !== false) tabs.push('quotations');
+    if (config?.enableFinanceBudget !== false) tabs.push('budget');
+    if (config?.enableFinanceCashflow !== false) tabs.push('cashflow');
+    if (config?.enableFinanceContingency !== false) tabs.push('contingency');
+    if (config?.enableFinanceReconciliation !== false) tabs.push('reconciliation');
+    return tabs;
+  }, [config]);
+
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => {
+    return enabledTabs[0] || 'planning';
+  });
+
+  useEffect(() => {
+    if (enabledTabs.length > 0 && !enabledTabs.includes(activeSubTab)) {
+      setActiveSubTab(enabledTabs[0]);
+    }
+  }, [enabledTabs, activeSubTab]);
 
   // Selected resource item inside the quotations sub-tab to view comparisons
   const [selectedQuoteResource, setSelectedQuoteResource] = useState<string>('res-tubos-4130');
@@ -801,9 +822,6 @@ export default function Finance({ activeProject, activeUser, memberships, users,
       <div className="bg-stone-900 border border-stone-850 p-6 rounded-lg shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-[9px] bg-[#DC2626] text-white px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
-              Finanças F1 in Schools
-            </span>
             <span className="text-stone-500 font-mono text-[10px]">
               ID: {activeProject.id}
             </span>
@@ -841,7 +859,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             { id: 'cashflow', label: '4. Fluxo de Caixa / Ledger', icon: <ArrowUpRight className="w-3.5 h-3.5" /> },
             { id: 'contingency', label: '5. Reserva de Contingência', icon: <Percent className="w-3.5 h-3.5" /> },
             { id: 'reconciliation', label: `6. Conciliação Bancária (${unreconciledItems.length})`, icon: <CheckCircle className="w-3.5 h-3.5" /> }
-          ].map(tab => (
+          ].filter(tab => enabledTabs.includes(tab.id as SubTab)).map(tab => (
             <button
               key={tab.id}
               onClick={() => {

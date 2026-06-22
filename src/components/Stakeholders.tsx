@@ -36,13 +36,14 @@ import {
   ReferenceLine,
   Cell
 } from 'recharts';
-import { Stakeholder, CommunicationMatrix, CommunicationLog, Project, User } from '../types';
+import { Stakeholder, CommunicationMatrix, CommunicationLog, Project, User, OrgConfig } from '../types';
 import { exportToExcel } from '../utils/excelExport';
 
 interface StakeholdersProps {
   activeProject: Project;
   activeUser: User;
   permissions?: any;
+  config?: OrgConfig;
 }
 
 // Initial defaults for fallback seeding if storage is empty
@@ -175,9 +176,25 @@ A diretora Cláudia confirmou a liberação da verba de compras de fibra de carb
   ];
 };
 
-export default function Stakeholders({ activeProject, activeUser, permissions }: StakeholdersProps) {
+export default function Stakeholders({ activeProject, activeUser, permissions, config }: StakeholdersProps) {
   // Active internal sub-views on Stakeholders: 'map' | 'comm_matrix' | 'comms_log'
-  const [subTab, setSubTab] = useState<'map' | 'comm_matrix' | 'comms_log'>('map');
+  const enabledTabs = useMemo(() => {
+    const tabs: ('map' | 'comm_matrix' | 'comms_log')[] = [];
+    if (config?.enableStakeholdersMap !== false) tabs.push('map');
+    if (config?.enableStakeholdersMatrix !== false) tabs.push('comm_matrix');
+    if (config?.enableStakeholdersLog !== false) tabs.push('comms_log');
+    return tabs;
+  }, [config]);
+
+  const [subTab, setSubTab] = useState<'map' | 'comm_matrix' | 'comms_log'>(() => {
+    return enabledTabs[0] || 'map';
+  });
+
+  useEffect(() => {
+    if (enabledTabs.length > 0 && !enabledTabs.includes(subTab)) {
+      setSubTab(enabledTabs[0]);
+    }
+  }, [enabledTabs, subTab]);
 
   // Unified Stores Sync between DB backend (if accessible) and offline LocalStorage fallback
   const [stakeholders, setStakeholders] = useState<Stakeholder[]>([]);
@@ -678,9 +695,6 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
             <span className="p-1 px-2.5 rounded text-[10px] font-mono tracking-wider font-black uppercase text-red-500 bg-red-950/20 border border-red-900/60 flex items-center gap-1.5 animate-pulse">
               ● FASE 1
             </span>
-            <span className="text-[10px] font-mono font-medium text-stone-400 bg-stone-900 border border-stone-800 rounded px-2 select-text">
-              {dbStateBadge}
-            </span>
           </div>
           <h2 className="text-xl font-display font-black tracking-wider uppercase text-white mt-1.5 flex items-center gap-2">
             <Users className="w-5 text-red-500" />
@@ -690,30 +704,36 @@ export default function Stakeholders({ activeProject, activeUser, permissions }:
 
         {/* TOP LEVEL NAVIGATION TABS */}
         <div className="flex bg-stone-950 p-1 border border-stone-850 rounded text-xs select-none">
-          <button 
-            onClick={() => setSubTab('map')}
-            className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              subTab === 'map' ? 'bg-red-650 text-white font-extrabold' : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            Mapeamento & Mendelow
-          </button>
-          <button 
-            onClick={() => setSubTab('comm_matrix')}
-            className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              subTab === 'comm_matrix' ? 'bg-red-650 text-white font-extrabold' : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            Matriz de Comunicações
-          </button>
-          <button 
-            onClick={() => setSubTab('comms_log')}
-            className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-              subTab === 'comms_log' ? 'bg-red-650 text-white font-extrabold' : 'text-stone-400 hover:text-white'
-            }`}
-          >
-            Atas & Atividades (Logs)
-          </button>
+          {enabledTabs.includes('map') && (
+            <button 
+              onClick={() => setSubTab('map')}
+              className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                subTab === 'map' ? 'bg-red-655 text-white font-bold bg-[#DC2626]' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Mapeamento & Mendelow
+            </button>
+          )}
+          {enabledTabs.includes('comm_matrix') && (
+            <button 
+              onClick={() => setSubTab('comm_matrix')}
+              className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                subTab === 'comm_matrix' ? 'bg-red-655 text-white font-bold bg-[#DC2626]' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Matriz de Comunicações
+            </button>
+          )}
+          {enabledTabs.includes('comms_log') && (
+            <button 
+              onClick={() => setSubTab('comms_log')}
+              className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                subTab === 'comms_log' ? 'bg-red-655 text-white font-bold bg-[#DC2626]' : 'text-stone-400 hover:text-white'
+              }`}
+            >
+              Atas & Atividades (Logs)
+            </button>
+          )}
         </div>
       </div>
 

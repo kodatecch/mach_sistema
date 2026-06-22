@@ -101,6 +101,27 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
     }));
   }, [machWheelScores]);
 
+  // Normalize milestones data or generate fallback F1 in Schools milestones
+  const milestones = useMemo(() => {
+    const list = tasks.filter(t => t.isMilestone);
+    if (list.length > 0) {
+      return list.slice(0, 5).map(t => ({
+        id: t.id,
+        name: t.name,
+        endDate: t.endDate || t.whenDate || '2026-12-31',
+        status: t.status,
+        progress: t.progress || (t.status === 'done' || t.status === 'completed' ? 100 : 0)
+      }));
+    }
+    return [
+      { id: 'm1', name: 'R1: Briefing de Engenharia & CFD', endDate: '2026-06-30', status: 'done', progress: 100 },
+      { id: 'm2', name: 'R2: Usinagem do Bloco Modelo', endDate: '2026-07-15', status: 'in_progress', progress: 60 },
+      { id: 'm3', name: 'R3: Pintura e Montagem do Eixo', endDate: '2026-08-10', status: 'pending', progress: 0 },
+      { id: 'm4', name: 'R4: Homologação no Trilho CO2', endDate: '2026-09-05', status: 'pending', progress: 0 },
+      { id: 'm5', name: 'R5: Estande Físico e Pit Display', endDate: '2026-10-15', status: 'pending', progress: 0 }
+    ];
+  }, [tasks]);
+
   // 1. CALCULATE REAL-TIME EVM METRICS
   const evm = useMemo(() => {
     const BAC = tasks.reduce((sum, t) => sum + t.plannedCost, 0);
@@ -261,7 +282,7 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
   // 3. RETRIEVE HIGH-PRIORITY CRITICAL RISKS (Risk Score >= 12)
   const criticalRisks = useMemo(() => {
     return risks
-      .filter(r => r.probability * r.impact >= 12 && r.status === 'ativo')
+      .filter(r => r.probability * r.impact >= 12 && r.status === 'active')
       .sort((a, b) => (b.probability * b.impact) - (a.probability * a.impact));
   }, [risks]);
 
@@ -417,6 +438,68 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
               {evm.SPI.toFixed(2)}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* ROADMAP DE MARCOS CRÍTICOS - NEW ADDITION */}
+      <div className="mach-card space-y-4" id="roadmap-milestones-card">
+        <div className="flex justify-between items-center">
+          <h2 className="text-sm font-bold text-stone-900 dark:text-stone-150 flex items-center gap-2">
+            <Target className="text-[#DC2626] w-4.5 h-4.5" />
+            Roadmap e Progresso de Marcos Críticos (F1 in Schools)
+          </h2>
+          <span className="text-[10px] font-mono font-bold text-stone-400">
+            Frentes de Engenharia e Gestão
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+          {milestones.map((m: any, idx: number) => {
+            const isCompleted = m.status === 'done' || m.progress === 100 || m.status === 'completed';
+            const isInProgress = m.status === 'in_progress' || (m.progress > 0 && m.progress < 100);
+            return (
+              <div 
+                key={m.id} 
+                className={`p-3 rounded-xl border transition-all ${
+                  isCompleted 
+                    ? 'bg-emerald-50/10 border-emerald-500/20 dark:border-emerald-500/10 text-emerald-800 dark:text-emerald-300' 
+                    : isInProgress 
+                      ? 'bg-[#DC2626]/5 border-[#DC2626]/20 dark:border-[#DC2626]/10 shadow-sm' 
+                      : 'bg-stone-50 dark:bg-stone-900/40 border-stone-200 dark:border-stone-850'
+                }`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[9px] font-mono font-bold text-stone-400">Etapa {idx + 1}</span>
+                  <span className={`w-2.5 h-2.5 rounded-full ${
+                    isCompleted 
+                      ? 'bg-emerald-500' 
+                      : isInProgress 
+                        ? 'bg-[#DC2626] animate-pulse' 
+                        : 'bg-stone-300 dark:bg-stone-700'
+                  }`} />
+                </div>
+                <h3 className="text-xs font-bold text-stone-800 dark:text-stone-200 line-clamp-2 h-8 leading-tight">
+                  {m.name}
+                </h3>
+                <div className="mt-3 space-y-1">
+                  <div className="flex justify-between text-[10px] font-mono text-stone-500">
+                    <span>Progresso</span>
+                    <span className={isInProgress ? 'text-[#DC2626] font-bold' : isCompleted ? 'text-emerald-500 font-bold' : ''}>
+                      {m.progress || 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-stone-200 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-[#DC2626]'}`} 
+                      style={{ width: `${m.progress || 0}%` }}
+                    />
+                  </div>
+                  <p className="text-[9px] font-mono text-stone-400 mt-1.5">
+                    Prazo: {new Date(m.endDate || '2026-12-31').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

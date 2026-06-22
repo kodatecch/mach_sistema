@@ -268,6 +268,22 @@ export interface OrgConfig {
   enableEisenhower?: boolean;
   enableGantt?: boolean;
   enableFlowchart?: boolean;
+  // Finance sub-methods
+  enableFinancePlanning?: boolean;
+  enableFinanceQuotations?: boolean;
+  enableFinanceBudget?: boolean;
+  enableFinanceCashflow?: boolean;
+  enableFinanceContingency?: boolean;
+  enableFinanceReconciliation?: boolean;
+  // Stakeholders sub-methods
+  enableStakeholdersMap?: boolean;
+  enableStakeholdersMatrix?: boolean;
+  enableStakeholdersLog?: boolean;
+  // Risks sub-methods
+  enableRisksList?: boolean;
+  enableRisksReports?: boolean;
+  enableRisksScope?: boolean;
+  enableRisksEvm?: boolean;
 }
 
 // Maps memberId → array of projectIds they can see

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   Layers, 
@@ -33,7 +33,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { io } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { User, Project, ProjectMember, Organization, ProjectRole, ExecutionRegime, UserTabPermissions, OrgConfig, MemberProjectVisibility } from '../types';
+import { User, Project, ProjectMember, Organization, ProjectRole, ExecutionRegime, UserTabPermissions, OrgConfig, MemberProjectVisibility, Task } from '../types';
 import CronogramaDashboard from './CronogramaDashboard';
 import Finance from './Finance';
 import Stakeholders from './Stakeholders';
@@ -152,6 +152,33 @@ export default function LegacyApp() {
   });
 
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Database status sync check for Legacy Settings Modal
+  const [dbStatus, setDbStatus] = useState<string>('Verificando Banco...');
+  const [isDbActive, setIsDbActive] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!showSettings) return;
+    setDbStatus('Verificando Conexão...');
+    fetch('http://localhost:3001/stakeholders', {
+      headers: { 'Authorization': 'Bearer dev-token' }
+    })
+      .then(res => {
+        if (res.ok) {
+          setDbStatus('Banco Cloud PostgreSQL Conectado');
+          setIsDbActive(true);
+        } else {
+          setDbStatus('Banco Local Ativo (Offline Sync)');
+          setIsDbActive(false);
+        }
+      })
+      .catch(() => {
+        setDbStatus('Banco Local Ativo (Offline Sync)');
+        setIsDbActive(false);
+      });
+  }, [showSettings]);
+
+
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberPassword, setNewMemberPassword] = useState('');
@@ -186,6 +213,33 @@ export default function LegacyApp() {
   const isGestorGlobal = activeUser ? memberships.some(
     m => m.userId === activeUser.id && m.role === 'admin'
   ) : false;
+
+  // Normalize milestones for Legacy Dashboard tab roadmap widget
+  const dashboardMilestones = useMemo(() => {
+    if (!activeProject) return [];
+    const localTasks = localStorage.getItem(`tasks_${activeProject.id}`);
+    let parsed: Task[] = [];
+    if (localTasks) {
+      try { parsed = JSON.parse(localTasks); } catch (e) {}
+    }
+    const list = parsed.filter(t => t.isMilestone);
+    if (list.length > 0) {
+      return list.slice(0, 5).map(t => ({
+        id: t.id,
+        name: t.name,
+        endDate: t.endDate || t.whenDate || '2026-12-31',
+        status: t.status,
+        progress: t.progress || (t.status === 'done' || t.status === 'completed' ? 100 : 0)
+      }));
+    }
+    return [
+      { id: 'm1', name: 'R1: Briefing de Engenharia & CFD', endDate: '2026-06-30', status: 'done', progress: 100 },
+      { id: 'm2', name: 'R2: Usinagem do Bloco Modelo', endDate: '2026-07-15', status: 'in_progress', progress: 60 },
+      { id: 'm3', name: 'R3: Pintura e Montagem do Eixo', endDate: '2026-08-10', status: 'pending', progress: 0 },
+      { id: 'm4', name: 'R4: Homologação no Trilho CO2', endDate: '2026-09-05', status: 'pending', progress: 0 },
+      { id: 'm5', name: 'R5: Estande Físico e Pit Display', endDate: '2026-10-15', status: 'pending', progress: 0 }
+    ];
+  }, [activeProject]);
 
   useEffect(() => {
     if (machConfig) {
@@ -1043,38 +1097,157 @@ export default function LegacyApp() {
                       </div>
                     </div>
 
-                    {/* Seção 2: Métodos do Cronograma */}
-                    <div className="pt-6 border-t border-stone-250 dark:border-stone-800 space-y-3.5">
+                    {/* Seção 2: Métodos e Sub-módulos Ativos por Área */}
+                    <div className="pt-6 border-t border-stone-250 dark:border-stone-800 space-y-4">
                       <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                        Métodos de Cronograma Ativos
+                        Métodos e Sub-módulos Ativos por Área
                       </h3>
-                      <div className="flex flex-wrap gap-6 select-none bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850">
-                        {[
-                          { key: 'enableWbs', label: 'WBS / EAP' },
-                          { key: 'enable5w2h', label: 'Planilha 5W2H' },
-                          { key: 'enableKanban', label: 'Quadro Kanban' },
-                          { key: 'enableEisenhower', label: 'Matriz Eisenhower' },
-                          { key: 'enableGantt', label: 'Gráfico de Gantt' },
-                          { key: 'enableFlowchart', label: 'Guia de Fluxograma' }
-                        ].map(method => {
-                          const isEnabled = machConfig?.[method.key as keyof OrgConfig] !== false;
-                          return (
-                            <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
-                              <input
-                                type="checkbox"
-                                id={`legacy-method-${method.key}`}
-                                checked={isEnabled}
-                                onChange={e => {
-                                  const updated = { ...machConfig!, [method.key]: e.target.checked };
-                                  setMachConfig(updated);
-                                  localStorage.setItem('mach_config', JSON.stringify(updated));
-                                }}
-                                className="w-4 h-4 rounded text-[#DC2626] border-stone-250 dark:border-stone-800 bg-white dark:bg-stone-950 focus:ring-[#DC2626]"
-                              />
-                              <span>{method.label}</span>
-                            </label>
-                          );
-                        })}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Cronograma */}
+                        <div className="space-y-2 bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850">
+                          <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">Cronograma</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 select-none">
+                            {[
+                              { key: 'enableWbs', label: 'WBS / EAP' },
+                              { key: 'enable5w2h', label: 'Planilha 5W2H' },
+                              { key: 'enableKanban', label: 'Quadro Kanban' },
+                              { key: 'enableEisenhower', label: 'Matriz Eisenhower' },
+                              { key: 'enableGantt', label: 'Gráfico de Gantt' },
+                              { key: 'enableFlowchart', label: 'CANVAS / ReactFlow' }
+                            ].map(method => {
+                              const isEnabled = machConfig?.[method.key as keyof OrgConfig] !== false;
+                              return (
+                                <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                                  <input
+                                    type="checkbox"
+                                    checked={isEnabled}
+                                    onChange={e => {
+                                      const updated = { ...machConfig!, [method.key]: e.target.checked };
+                                      setMachConfig(updated);
+                                      localStorage.setItem('mach_config', JSON.stringify(updated));
+                                    }}
+                                    className="w-3.5 h-3.5 rounded text-[#DC2626] border-stone-250 dark:border-stone-850 bg-white dark:bg-stone-950 focus:ring-[#DC2626]"
+                                  />
+                                  <span>{method.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Orçamento / Finanças */}
+                        <div className="space-y-2 bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850">
+                          <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">Orçamento & Finanças</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 select-none">
+                            {[
+                              { key: 'enableFinancePlanning', label: 'Planilha de Recursos' },
+                              { key: 'enableFinanceQuotations', label: 'Cotações & Comparações' },
+                              { key: 'enableFinanceBudget', label: 'Linhas de Baseline' },
+                              { key: 'enableFinanceCashflow', label: 'Fluxo de Caixa / Ledger' },
+                              { key: 'enableFinanceContingency', label: 'Reserva de Contingência' },
+                              { key: 'enableFinanceReconciliation', label: 'Reconciliação Bancária' }
+                            ].map(method => {
+                              const isEnabled = machConfig?.[method.key as keyof OrgConfig] !== false;
+                              return (
+                                <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                                  <input
+                                    type="checkbox"
+                                    checked={isEnabled}
+                                    onChange={e => {
+                                      const updated = { ...machConfig!, [method.key]: e.target.checked };
+                                      setMachConfig(updated);
+                                      localStorage.setItem('mach_config', JSON.stringify(updated));
+                                    }}
+                                    className="w-3.5 h-3.5 rounded text-[#DC2626] border-stone-250 dark:border-stone-850 bg-white dark:bg-stone-950 focus:ring-[#DC2626]"
+                                  />
+                                  <span>{method.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Stakeholders */}
+                        <div className="space-y-2 bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850">
+                          <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">Stakeholders</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 select-none">
+                            {[
+                              { key: 'enableStakeholdersMap', label: 'Mapeamento Mendelow' },
+                              { key: 'enableStakeholdersMatrix', label: 'Matriz de Engajamento' },
+                              { key: 'enableStakeholdersLog', label: 'Registro de Comunicações' }
+                            ].map(method => {
+                              const isEnabled = machConfig?.[method.key as keyof OrgConfig] !== false;
+                              return (
+                                <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                                  <input
+                                    type="checkbox"
+                                    checked={isEnabled}
+                                    onChange={e => {
+                                      const updated = { ...machConfig!, [method.key]: e.target.checked };
+                                      setMachConfig(updated);
+                                      localStorage.setItem('mach_config', JSON.stringify(updated));
+                                    }}
+                                    className="w-3.5 h-3.5 rounded text-[#DC2626] border-stone-250 dark:border-stone-850 bg-white dark:bg-stone-950 focus:ring-[#DC2626]"
+                                  />
+                                  <span>{method.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Riscos */}
+                        <div className="space-y-2 bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850">
+                          <h4 className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">Riscos e Escopo</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 select-none">
+                            {[
+                              { key: 'enableRisksList', label: 'Identificação de Riscos' },
+                              { key: 'enableRisksReports', label: 'Relatórios de Status' },
+                              { key: 'enableRisksScope', label: 'Controle de Escopo' },
+                              { key: 'enableRisksEvm', label: 'Análise EVM / Valor Agregado' }
+                            ].map(method => {
+                              const isEnabled = machConfig?.[method.key as keyof OrgConfig] !== false;
+                              return (
+                                <label key={method.key} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white">
+                                  <input
+                                    type="checkbox"
+                                    checked={isEnabled}
+                                    onChange={e => {
+                                      const updated = { ...machConfig!, [method.key]: e.target.checked };
+                                      setMachConfig(updated);
+                                      localStorage.setItem('mach_config', JSON.stringify(updated));
+                                    }}
+                                    className="w-3.5 h-3.5 rounded text-[#DC2626] border-stone-250 dark:border-stone-850 bg-white dark:bg-stone-950 focus:ring-[#DC2626]"
+                                  />
+                                  <span>{method.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Seção Nova: Status de Integração e Banco de Dados */}
+                    <div className="pt-6 border-t border-stone-250 dark:border-stone-800 space-y-3">
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                        Infraestrutura & Banco de Dados
+                      </h3>
+                      <div className="bg-stone-50 dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200 dark:border-stone-850 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
+                        <div className="space-y-1">
+                          <p className="font-bold text-stone-800 dark:text-stone-200">Integração Relacional Híbrida</p>
+                          <p className="text-stone-500 dark:text-stone-400 font-mono text-[10.5px]">Sincronização bidirecional entre LocalStorage offline e servidor cloud NestJS PostgreSQL.</p>
+                        </div>
+                        <div className="flex items-center gap-2.5 font-mono text-[10px]">
+                          <span className={`px-2.5 py-1 rounded font-bold border flex items-center gap-1.5 ${isDbActive ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-600 dark:text-emerald-500' : 'bg-stone-100 dark:bg-stone-950/50 border-stone-255 dark:border-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                            <Database className="w-3.5 h-3.5" />
+                            {dbStatus}
+                          </span>
+                          <span className="bg-stone-100 dark:bg-stone-955 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 px-2.5 py-1 rounded font-bold uppercase">
+                            Sincronização Ativa
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -1601,6 +1774,68 @@ export default function LegacyApp() {
                         </div>
                       </div>
 
+                      {/* ROADMAP DE MARCOS CRÍTICOS - NEW ADDITION */}
+                      <div className="bg-stone-900 border border-stone-800 p-5 rounded space-y-4" id="legacy-roadmap-card">
+                        <div className="flex justify-between items-center select-none">
+                          <h3 className="text-xs font-bold uppercase text-white font-mono tracking-wider flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-red-505" />
+                            Roadmap e Progresso de Marcos Críticos (F1 in Schools)
+                          </h3>
+                          <span className="text-[10px] font-mono text-stone-400">
+                            Frentes de Engenharia e Gestão
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                          {dashboardMilestones.map((m: any, idx: number) => {
+                            const isCompleted = m.status === 'done' || m.progress === 100 || m.status === 'completed';
+                            const isInProgress = m.status === 'in_progress' || (m.progress > 0 && m.progress < 100);
+                            return (
+                              <div 
+                                key={m.id} 
+                                className={`p-3 rounded border transition-all ${
+                                  isCompleted 
+                                    ? 'bg-emerald-950/10 border-emerald-800/30 text-emerald-300' 
+                                    : isInProgress 
+                                      ? 'bg-red-955 border-red-900/40 shadow-sm' 
+                                      : 'bg-stone-950/60 border-stone-850'
+                                }`}
+                              >
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className="text-[9px] font-mono font-bold text-stone-500">Etapa {idx + 1}</span>
+                                  <span className={`w-2.5 h-2.5 rounded-full ${
+                                    isCompleted 
+                                      ? 'bg-emerald-500' 
+                                      : isInProgress 
+                                        ? 'bg-red-650 animate-pulse' 
+                                        : 'bg-stone-700'
+                                  }`} />
+                                </div>
+                                <h4 className="text-xs font-bold text-stone-200 line-clamp-2 h-8 leading-tight">
+                                  {m.name}
+                                </h4>
+                                <div className="mt-3 space-y-1">
+                                  <div className="flex justify-between text-[10px] font-mono text-stone-500">
+                                    <span>Progresso</span>
+                                    <span className={isInProgress ? 'text-red-400 font-bold' : isCompleted ? 'text-emerald-500 font-bold' : ''}>
+                                      {m.progress || 0}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-stone-850 h-1 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-red-600'}`} 
+                                      style={{ width: `${m.progress || 0}%` }}
+                                    />
+                                  </div>
+                                  <p className="text-[9px] font-mono text-stone-500 mt-1.5">
+                                    Prazo: {new Date(m.endDate || '2026-12-31').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       {/* DETAILED MONOREPO SUMMARY CARDS */}
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         
@@ -1720,6 +1955,7 @@ export default function LegacyApp() {
                         memberships={memberships}
                         users={users}
                         permissions={permissions}
+                        config={machConfig || undefined}
                       />
                     </motion.div>
                   )}
@@ -1736,6 +1972,7 @@ export default function LegacyApp() {
                         activeProject={activeProject}
                         activeUser={activeUser}
                         permissions={permissions}
+                        config={machConfig || undefined}
                       />
                     </motion.div>
                   )}
@@ -1752,6 +1989,7 @@ export default function LegacyApp() {
                         activeProject={activeProject}
                         activeUser={activeUser}
                         permissions={permissions}
+                        config={machConfig || undefined}
                       />
                     </motion.div>
                   )}

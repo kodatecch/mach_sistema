@@ -2478,7 +2478,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 <button
                   type="button"
                   onClick={() => exportToPDF('gantt-chart-export-container', `Gantt_${activeProject.name.replace(/\s+/g, '_')}.pdf`, 'l')}
-                  className="bg-red-650 hover:bg-red-700 text-white font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                  className="accent-bg hover:opacity-90 text-white font-extrabold uppercase py-1.5 px-3.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Exportar Gantt PDF

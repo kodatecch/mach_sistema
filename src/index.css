@@ -183,23 +183,62 @@
 
   /* Exceções específicas para cabeçalhos e títulos brancos */
   h1.text-white, h2.text-white, h3.text-white, h4.text-white,
-  .text-white.font-bold, .text-stone-100.font-bold {
+  .text-white.font-bold:not(.accent-bg):not(.bg-red-650):not(.bg-red-655):not(.bg-\[\#DC2626\]):not(.mach-button-primary),
+  .text-stone-100.font-bold:not(.accent-bg):not(.bg-red-650):not(.bg-red-655):not(.bg-\[\#DC2626\]):not(.mach-button-primary) {
     color: #1c1917 !important;
+  }
+
+  /* Custom Red Helper Colors mapping to dynamic accent values */
+  .bg-red-650, .bg-red-655 {
+    background-color: var(--accent) !important;
+  }
+  .bg-red-650\/10 {
+    background-color: var(--accent-soft) !important;
+  }
+  .bg-[#DC2626]\/10 {
+    background-color: var(--accent-soft) !important;
+  }
+  .bg-[#DC2626]\/5 {
+    background-color: rgba(220, 38, 38, 0.05) !important;
+  }
+  :root[data-color="cyan"] .bg-[#DC2626]\/5 {
+    background-color: rgba(6, 182, 212, 0.05) !important;
+  }
+  .hover\:bg-red-750:hover, .hover\:bg-red-700:hover {
+    background-color: var(--accent-hover) !important;
+  }
+  .text-red-650 {
+    color: var(--accent) !important;
+  }
+  .text-red-505 {
+    color: var(--accent) !important;
+  }
+  .text-[#DC2626] {
+    color: var(--accent) !important;
+  }
+  .border-red-505\/25, .border-red-500\/50, .border-red-900\/60 {
+    border-color: var(--accent-ring) !important;
   }
 
   /* Manter botões vermelhos ou ciano com texto branco */
   .mach-button-primary,
   .bg-red-650,
+  .bg-red-655,
   .accent-bg {
     color: #ffffff !important;
-    h1, h2, h3, h4, span, p, div {
-      color: #ffffff !important;
-    }
+  }
+  .mach-button-primary *,
+  .bg-red-650 *,
+  .bg-red-655 *,
+  .accent-bg * {
+    color: #ffffff !important;
   }
 
-  /* Ajuste para ícones do lucide no menu ou botões */
-  .text-red-505 {
-    color: var(--accent) !important;
+  .mach-button-primary .text-white.font-bold,
+  .bg-red-650 .text-white.font-bold,
+  .bg-red-655 .text-white.font-bold,
+  .accent-bg .text-white.font-bold {
+    color: #ffffff !important;
   }
 
   /* Novas classes de opacidade no Light Mode */
