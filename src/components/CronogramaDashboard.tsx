@@ -55,6 +55,31 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { WbsItem, Task, Project, ProjectMember, User, TaskDependency, OrgConfig } from '../types';
 
+function calculateDaysDifference(date1: string, date2: string): number {
+  const d1 = new Date(date1 + 'T00:00:00');
+  const d2 = new Date(date2 + 'T00:00:00');
+  const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+  const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+  return Math.floor((utc1 - utc2) / (1000 * 60 * 60 * 24));
+}
+
+function isTaskPending(task: Task): boolean {
+  if (!task.startDate || !task.endDate) return true;
+  if (!task.what || !task.why || !task.where || !task.whoOwnerId || !task.how) return true;
+  if (task.durationOptimistic === null || task.durationLikely === null || task.durationPessimistic === null) return true;
+  return false;
+}
+
+function shouldShowPendingWarning(task: Task, config?: OrgConfig, currentDate?: string): boolean {
+  if (config?.enablePendingWarnings === false) return false;
+  if (!isTaskPending(task)) return false;
+  if (task.status === 'done' && task.completedDate && currentDate) {
+    const diff = calculateDaysDifference(currentDate, task.completedDate);
+    if (diff >= 2) return false;
+  }
+  return true;
+}
+
 export type CanvasShape = 'rectangle' | 'diamond' | 'rounded-rectangle' | 'circle';
 
 // Custom Node Component for CANVAS
@@ -111,7 +136,10 @@ const CustomCanvasNode = ({ id, data, selected }: any) => {
               </span>
               {isCritical && <span className="text-[7px] bg-red-650 text-white px-1 rounded uppercase font-black">CRÍTICO</span>}
             </div>
-            <div className="font-extrabold text-[10px] truncate max-w-[150px] my-1 text-stone-800 dark:text-stone-100">{label}</div>
+            <div className="font-extrabold text-[10px] truncate max-w-[150px] my-1 text-stone-800 dark:text-stone-100 flex items-center gap-1">
+              {label}
+              {data.shouldShowWarning && <span title="Informações Pendentes">⚠️</span>}
+            </div>
             <div className="text-[8px] text-stone-500 dark:text-stone-400">📅 {startDate}</div>
             <div className="flex justify-between items-center mt-1 text-[7.5px] text-stone-400">
               <span>Folga: {totalFloat}d</span>
@@ -140,6 +168,7 @@ interface CronogramaDashboardProps {
   users: User[];
   permissions?: any;
   config?: OrgConfig;
+  currentDate?: string;
 }
 
 // -----------------------------------------------------------------
@@ -549,8 +578,9 @@ function getFlowElements(tasksList: any[], depsList: any[], annotationsList: any
   return { nodes, edges };
 }
 
-export default function CronogramaDashboard({ activeProject, activeUser, memberships, users, permissions, config }: CronogramaDashboardProps) {
+export default function CronogramaDashboard({ activeProject, activeUser, memberships, users, permissions, config, currentDate = '2026-06-20' }: CronogramaDashboardProps) {
   const queryClient = useQueryClient();
+  const isDark = config?.theme === 'dark';
   const [activeSubTab, setActiveSubTab] = useState<'wbs' | '5w2h' | 'kanban' | 'eisenhower' | 'gantt' | 'flow'>('wbs');
 
   const enabledTabs = React.useMemo(() => {
@@ -586,6 +616,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
   const [taskStatusInput, setTaskStatusInput] = useState('todo');
   const [taskWbsInput, setTaskWbsInput] = useState('');
   const [taskComment, setTaskComment] = useState('');
+  const [taskAreaInput, setTaskAreaInput] = useState('');
   
   // 5W2H form fields
   const [taskWhat, setTaskWhat] = useState('');
@@ -605,6 +636,59 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
   // Predecessor & Milestone states
   const [taskPredecessor, setTaskPredecessor] = useState('');
   const [taskIsMilestone, setTaskIsMilestone] = useState(false);
+
+  // Loose task input states
+  const [showLooseTaskForm, setShowLooseTaskForm] = useState(false);
+  const [looseTaskName, setLooseTaskName] = useState('');
+  const [looseTaskArea, setLooseTaskArea] = useState('');
+  const [looseTaskOwner, setLooseTaskOwner] = useState('');
+
+  const handleOpenAddLooseTask = () => {
+    setLooseTaskName('');
+    setLooseTaskArea('');
+    setLooseTaskOwner(activeUser.id);
+    setShowLooseTaskForm(true);
+  };
+
+  const saveLooseTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!looseTaskName.trim()) {
+      alert('Nome da atividade é obrigatório.');
+      return;
+    }
+    const targetTaskId = `task_${Date.now()}`;
+    const newLooseTask: Task = {
+      id: targetTaskId,
+      projectId: activeProject.id,
+      wbsItemId: null,
+      name: looseTaskName.trim(),
+      description: null,
+      status: 'todo',
+      startDate: null,
+      endDate: null,
+      what: looseTaskName.trim(),
+      why: null,
+      where: null,
+      whenDate: null,
+      whoOwnerId: looseTaskOwner || null,
+      how: null,
+      howMuch: null,
+      durationOptimistic: null,
+      durationLikely: null,
+      durationPessimistic: null,
+      durationExpected: null,
+      isUrgent: false,
+      isImportant: false,
+      isMilestone: false,
+      isLoose: true,
+      area: looseTaskArea.trim() || null,
+      completedDate: null,
+      comment: null
+    };
+
+    mutateTasks([...tasks, newLooseTask]);
+    setShowLooseTaskForm(false);
+  };
 
   // Interactive Gantt & Flowchart states
   const [ganttScale, setGanttScale] = useState<'day' | 'week' | 'month'>('day');
@@ -828,7 +912,8 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             endDate: task.endDate,
             isCritical: task.isCritical,
             totalFloat: task.totalFloat,
-            isMilestone: task.durationExpected === 0
+            isMilestone: task.durationExpected === 0,
+            shouldShowWarning: shouldShowPendingWarning(task, config, currentDate)
           }
         };
       });
@@ -1313,6 +1398,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
     setTaskDescInput('');
     setTaskStatusInput('todo');
     setTaskWbsInput(wbsItemId || '');
+    setTaskAreaInput('');
     
     // 5W2H default values
     setTaskWhat('');
@@ -1348,6 +1434,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
     setTaskStatusInput(task.status);
     setTaskWbsInput(task.wbsItemId || '');
     setTaskComment((task as any).comment || '');
+    setTaskAreaInput(task.area || '');
     
     setTaskWhat(task.what || '');
     setTaskWhy(task.why || '');
@@ -1420,7 +1507,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             durationPessimistic: pertPess,
             durationExpected,
             isMilestone: taskIsMilestone,
-            comment: taskComment || null
+            comment: taskComment || null,
+            area: taskAreaInput.trim() || null,
+            completedDate: taskStatusInput === 'done' ? (t.completedDate || currentDate) : null
           };
         }
         return t;
@@ -1472,7 +1561,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         isUrgent: false,
         isImportant: false,
         isMilestone: taskIsMilestone,
-        comment: taskComment || null
+        comment: taskComment || null,
+        area: taskAreaInput.trim() || null,
+        completedDate: taskStatusInput === 'done' ? currentDate : null
       };
       mutateTasks([...tasks, newTask]);
 
@@ -1599,7 +1690,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
 
     const updated = tasks.map(t => {
       if (t.id === draggedTaskId) {
-        return { ...t, status };
+        return { 
+          ...t, 
+          status,
+          completedDate: status === 'done' ? (t.completedDate || currentDate) : null
+        };
       }
       return t;
     });
@@ -1662,9 +1757,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
   return (
     <div className="space-y-6">
       {/* MODULE HEADER AND RBAC ROBUST OVERALL BADGE */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-850 pb-4 gap-4">
+      <div className={`flex flex-col sm:flex-row sm:items-center justify-between border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} pb-4 gap-4`}>
         <div>
-          <h2 className="text-xl font-display font-black text-white uppercase tracking-wider flex items-center gap-2">
+          <h2 className={`text-xl font-display font-black ${isDark ? 'text-white' : 'text-stone-900'} uppercase tracking-wider flex items-center gap-2`}>
             <SlidersHorizontal className="w-5 h-5 text-red-505" />
             CRONOGRAMA & ENGENHARIA DE PROCESSOS (WBS)
           </h2>
@@ -1677,11 +1772,17 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
           >
             <Plus className="w-4 h-4" /> Nova Tarefa 5W2H
           </button>
+          <button
+            onClick={handleOpenAddLooseTask}
+            className="mach-button-secondary text-xs font-bold tracking-wider font-mono uppercase flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Nova Tarefa Avulsa
+          </button>
         </div>
       </div>
 
       {/* MODULE SUB-TAB NAVIGATION */}
-      <div className="flex border-b border-stone-850 gap-1.5 flex-wrap">
+      <div className={`flex border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} gap-1.5 flex-wrap`}>
         {enabledTabs.includes('wbs') && (
           <button
             onClick={() => setActiveSubTab('wbs')}
@@ -1692,7 +1793,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             }`}
           >
             <GitBranch className="w-4 h-4 text-stone-400" />
-            Árvore EAP / WBS
+            WBS
           </button>
         )}
 
@@ -1706,7 +1807,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             }`}
           >
             <Table className="w-4 h-4 text-stone-400" />
-            Planilha 5W2H Inline
+            5W2H
           </button>
         )}
 
@@ -1720,7 +1821,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             }`}
           >
             <Kanban className="w-4 h-4 text-stone-400" />
-            Quadro Kanban
+            Kanban
           </button>
         )}
 
@@ -1734,7 +1835,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             }`}
           >
             <Grid className="w-4 h-4 text-stone-400" />
-            Priorização Eisenhower
+            Eisenhower
           </button>
         )}
 
@@ -1748,7 +1849,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             }`}
           >
             <Layers className="w-4 h-4 text-stone-400 animate-pulse" />
-            Cronograma Gantt (PERT/CPM)
+            Gantt
           </button>
         )}
 
@@ -1762,7 +1863,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             }`}
           >
             <Workflow className="w-4 h-4 text-stone-400" />
-            CANVAS
+            Canvas
           </button>
         )}
       </div>
@@ -1825,18 +1926,15 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         </div>
       )}
 
-      {/* -------------------------------------------------------------
-          SUB-TAB 1: WBS TREE VIEW WITH EXPANSION AND DND DRAG/REPARENT
-          ------------------------------------------------------------- */}
       {activeSubTab === 'wbs' && (
         <div className="space-y-4">
-          <div className="bg-stone-900 border border-stone-850 p-4 rounded flex items-center justify-between">
+          <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-50 border-stone-200'} border p-4 rounded flex items-center justify-between`}>
             <div className="flex items-center gap-2">
               <Info className="w-4 h-4 text-red-505" />
-              <p className="text-xs text-stone-300 leading-normal">
+              <p className={`text-xs ${isDark ? 'text-stone-300' : 'text-stone-600'} leading-normal`}>
                 Disponibilize a organização hierárquica (EDT/EAP) do protótipo. 
                 {isAdminOrLead ? (
-                  <strong className="text-white"> Arraste e solte nós para reparentar visualmente</strong>
+                  <strong className={isDark ? 'text-white' : 'text-stone-900'}> Arraste e solte nós para reparentar visualmente</strong>
                 ) : (
                   ' Você possui permissão apenas para visualização da árvore de EAP principal.'
                 )}
@@ -1846,7 +1944,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             {isAdminOrLead && (
               <button
                 onClick={() => handleOpenAddWbs(null)}
-                className="bg-stone-950 border border-stone-800 text-stone-200 hover:text-white px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5"
+                className={`${isDark ? 'bg-stone-950 border-stone-800 text-stone-200 hover:text-white' : 'bg-white border-stone-250 text-stone-750 hover:text-stone-900'} border px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5`}
               >
                 <FolderPlus className="w-4 h-4" /> Novo Item Raiz
               </button>
@@ -1857,7 +1955,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
           <div 
             onDragOver={handleDragOver}
             onDrop={handleWbsDropOnRoot}
-            className="p-6 bg-stone-900 border border-stone-850 rounded relative min-h-[400px] space-y-4"
+            className={`p-6 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-50 border-stone-200'} border rounded relative min-h-[400px] space-y-4`}
           >
             {isLoadingWbs ? (
               <div className="space-y-3 py-6">
@@ -1866,12 +1964,12 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 ))}
               </div>
             ) : rootWbsItems.length === 0 ? (
-              <div className="text-center py-20 text-stone-500 font-mono text-xs flex flex-col items-center justify-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-stone-900 border border-stone-850 flex items-center justify-center text-stone-400">
+              <div className={`text-center py-20 ${isDark ? 'text-stone-500' : 'text-stone-605'} font-mono text-xs flex flex-col items-center justify-center gap-4`}>
+                <div className={`w-12 h-12 rounded-full ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border flex items-center justify-center text-stone-400`}>
                   <Info className="w-6 h-6 text-stone-500" />
                 </div>
                 <div>
-                  <p className="font-bold text-stone-300">Nenhum item EAP raiz registrado</p>
+                  <p className={`font-bold ${isDark ? 'text-stone-300' : 'text-stone-900'}`}>Nenhum item EAP raiz registrado</p>
                   <p className="text-[10px] text-stone-500 mt-1">Configure os macro-entregáveis para decompor suas sprints.</p>
                 </div>
                 {isAdminOrLead && (
@@ -2137,7 +2235,14 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             const colLabel = colStatus === 'todo' ? 'A FAZER (TODO)' : colStatus === 'in_progress' ? 'EM DESENVOLVIMENTO' : 'CONCLUÍDO (DONE)';
             const colColorBadge = colStatus === 'todo' ? 'bg-orange-500' : colStatus === 'in_progress' ? 'bg-blue-500' : 'bg-green-500';
             
-            const colTasks = filteredTasks.filter(t => t.status === colStatus);
+            const colTasks = filteredTasks.filter(t => {
+              if (t.status !== colStatus) return false;
+              if (colStatus === 'done' && t.completedDate) {
+                const diff = calculateDaysDifference(currentDate, t.completedDate);
+                if (diff >= 2) return false;
+              }
+              return true;
+            });
 
             return (
               <div
@@ -2146,17 +2251,17 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 onDrop={(e) => handleKanbanDrop(e, colStatus)}
                 onDragEnter={() => setHoveredColumn(colStatus)}
                 onDragLeave={() => setHoveredColumn(null)}
-                className={`bg-stone-900 border ${
-                  hoveredColumn === colStatus ? 'border-red-505/50 bg-[#161616]' : 'border-stone-850'
+                className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-100 border-stone-200'} border ${
+                  hoveredColumn === colStatus ? 'border-red-505/50 bg-[#161616]' : ''
                 } rounded p-4 flex flex-col min-h-[500px] transition-all`}
               >
                 {/* Column Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-stone-850 mb-4 select-none">
+                <div className={`flex items-center justify-between pb-3 border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} mb-4 select-none`}>
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${colColorBadge}`}></span>
-                    <h3 className="font-mono text-xs font-black text-white uppercase tracking-wider">{colLabel}</h3>
+                    <h3 className={`font-mono text-xs font-black ${isDark ? 'text-white' : 'text-stone-900'} uppercase tracking-wider`}>{colLabel}</h3>
                   </div>
-                  <span className="text-[10px] font-mono bg-stone-950 border border-stone-850 text-stone-400 px-2 py-0.5 rounded-full font-bold">
+                  <span className={`text-[10px] font-mono ${isDark ? 'bg-stone-955 border border-stone-850 text-stone-400' : 'bg-white border border-stone-200 text-stone-600'} px-2 py-0.5 rounded-full font-bold`}>
                     {colTasks.length}
                   </span>
                 </div>
@@ -2164,7 +2269,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 {/* Cards Container */}
                 <div className="flex-grow space-y-3">
                   {colTasks.length === 0 ? (
-                    <div className="border border-dashed border-stone-850 rounded-lg p-6 text-center text-stone-500 font-mono text-[10px] select-none">
+                    <div className={`border border-dashed ${isDark ? 'border-stone-850 text-stone-500' : 'border-stone-200 text-stone-400'} rounded-lg p-6 text-center font-mono text-[10px] select-none`}>
                       Arraste tarefas para mudar de status
                     </div>
                   ) : (
@@ -2176,12 +2281,12 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                           key={task.id}
                           draggable
                           onDragStart={(e) => handleTaskDragStart(e, task.id)}
-                          className={`p-4 bg-stone-950 border border-stone-850 hover:border-stone-700 rounded-lg cursor-grab active:cursor-grabbing transition space-y-3 ${
+                          className={`p-4 ${isDark ? 'bg-stone-955 border border-stone-850 hover:border-stone-700' : 'bg-white border border-stone-200 hover:border-stone-300'} rounded-lg cursor-grab active:cursor-grabbing transition space-y-3 ${
                             dragsActiveBorder(task)
                           }`}
                         >
                           <div className="flex items-start justify-between">
-                            <span className="text-[8.5px] font-mono text-red-400 bg-stone-900 border border-stone-850 rounded px-1.5 py-0.5 uppercase tracking-wider font-bold">
+                            <span className={`text-[8.5px] font-mono text-red-500 dark:text-red-400 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-55 border border-stone-200'} rounded px-1.5 py-0.5 uppercase tracking-wider font-bold`}>
                               {wbsItems.find(w => w.id === task.wbsItemId)?.code || 'EAP LIVRE'}
                             </span>
 
@@ -2189,14 +2294,19 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                               {task.isUrgent && task.isImportant && (
                                 <span className="w-2 h-2 rounded-full bg-red-650" title="Crítica / Máxima Prioridade"></span>
                               )}
-                              <span className="text-[10px] font-mono text-stone-550">
+                              <span className="text-[10px] font-mono text-stone-500">
                                 {task.id.substring(0, 5).toUpperCase()}
                               </span>
                             </div>
                           </div>
 
-                          <h4 className="text-xs font-bold text-white leading-normal uppercase">
+                          <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-stone-900'} leading-normal uppercase flex items-center gap-1.5 flex-wrap`}>
                             {task.name}
+                            {shouldShowPendingWarning(task, config, currentDate) && (
+                              <span className="text-[9px] bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-500 font-mono font-bold px-1.5 py-0.5 rounded select-none">
+                                [⚠️ Info Pendente]
+                              </span>
+                            )}
                           </h4>
 
                           {task.description && (
@@ -2206,10 +2316,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                           )}
 
                           {/* Task Footer Card Details */}
-                          <div className="pt-2 border-t border-stone-900/60 flex items-center justify-between gap-2 text-[10px] font-mono">
+                          <div className={`pt-2 border-t ${isDark ? 'border-stone-900/60' : 'border-stone-100'} flex items-center justify-between gap-2 text-[10px] font-mono`}>
                             <div className="flex items-center gap-1.5 text-stone-400 select-none">
                               <UserIcon className="w-3.5 h-3.5 text-stone-500" />
-                              <span className="truncate max-w-[90px] font-semibold text-stone-300">
+                              <span className={`truncate max-w-[90px] font-semibold ${isDark ? 'text-stone-300' : 'text-stone-700'}`}>
                                 {userMap[task.whoOwnerId || ''] || 'Sem Dono'}
                               </span>
                             </div>
@@ -2217,10 +2327,12 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                             {/* Remaining Days Badge */}
                             <span className={`px-2 py-0.5 rounded font-black text-[9px] uppercase border ${
                               remain.state === 'overdue' 
-                                ? 'bg-red-950/40 border-red-800 text-red-500' 
+                                ? 'bg-red-105 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-750 dark:text-red-500' 
                                 : remain.state === 'urgent' || remain.state === 'soon' 
-                                  ? 'bg-amber-950/20 border-amber-800 text-amber-500' 
-                                  : 'bg-stone-900 border-stone-800 text-stone-400'
+                                  ? 'bg-amber-105 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 text-amber-750 dark:text-amber-500' 
+                                  : isDark
+                                    ? 'bg-stone-900 border-stone-800 text-stone-400'
+                                    : 'bg-stone-50 border-stone-200 text-stone-605'
                             }`}>
                               {remain.text}
                             </span>
@@ -2270,16 +2382,13 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         </div>
       )}
 
-      {/* -------------------------------------------------------------
-          SUB-TAB 4: DYNAMIC EISENHOWER DECISION MATRIX
-          ------------------------------------------------------------- */}
       {activeSubTab === 'eisenhower' && (
         <div className="space-y-4">
-          <div className="bg-stone-900 border border-stone-850 p-4 rounded flex items-center gap-2">
+          <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-50 border-stone-200'} border p-4 rounded flex items-center gap-2`}>
             <Info className="w-4 h-4 text-red-505" />
-            <p className="text-xs text-stone-300">
+            <p className={`text-xs ${isDark ? 'text-stone-300' : 'text-stone-600'}`}>
               Gerencie a relevância operacional de cada tarefa. Arraste as caixas diretamente entre os quatro quadrantes 
-              para atualizar seu nível crítico (<strong className="text-white">isUrgent</strong> / <strong className="text-white">isImportant</strong>) dinamicamente.
+              para atualizar seu nível crítico (<strong className={isDark ? 'text-white' : 'text-stone-900'}>isUrgent</strong> / <strong className={isDark ? 'text-white' : 'text-stone-900'}>isImportant</strong>) dinamicamente.
             </p>
           </div>
 
@@ -2288,7 +2397,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <div 
               onDragOver={handleDragOver}
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: true, isImportant: true })}
-              className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-red-500 transition-all hover:bg-stone-900/60"
+              className={`${isDark ? 'bg-stone-900 border-stone-850 hover:bg-stone-900/60' : 'bg-stone-50 border-stone-200 hover:bg-stone-50/60'} border rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-red-500 transition-all`}
             >
               <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
                 <span className="text-xs bg-red-100 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
@@ -2303,7 +2412,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <div 
               onDragOver={handleDragOver}
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: false, isImportant: true })}
-              className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-orange-400 transition-all hover:bg-stone-900/60"
+              className={`${isDark ? 'bg-stone-900 border-stone-850 hover:bg-stone-900/60' : 'bg-stone-50 border-stone-200 hover:bg-stone-50/60'} border rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-orange-400 transition-all`}
             >
               <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
                 <span className="text-xs bg-orange-100 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900/60 text-orange-750 dark:text-orange-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
@@ -2318,7 +2427,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <div 
               onDragOver={handleDragOver}
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: true, isImportant: false })}
-              className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-yellow-500 transition-all hover:bg-stone-900/60"
+              className={`${isDark ? 'bg-stone-900 border-stone-850 hover:bg-stone-900/60' : 'bg-stone-50 border-stone-200 hover:bg-stone-50/60'} border rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-yellow-500 transition-all`}
             >
               <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
                 <span className="text-xs bg-yellow-100 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-900/60 text-yellow-750 dark:text-yellow-400 font-mono px-2 py-0.5 rounded font-bold uppercase">
@@ -2333,7 +2442,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <div 
               onDragOver={handleDragOver}
               onDrop={(e) => handleEisenhowerDrop(e, { isUrgent: false, isImportant: false })}
-              className="bg-stone-900 border border-stone-850 rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-stone-600 transition-all hover:bg-stone-900/60"
+              className={`${isDark ? 'bg-stone-900 border-stone-850 hover:bg-stone-900/60' : 'bg-stone-50 border-stone-200 hover:bg-stone-50/60'} border rounded-lg p-5 flex flex-col min-h-[300px] border-l-4 border-l-stone-600 transition-all`}
             >
               <div className="flex items-center gap-2 border-b border-stone-250 dark:border-stone-800 pb-3 mb-4">
                 <span className="text-xs bg-stone-100 dark:bg-stone-900 border border-stone-250 dark:border-stone-800 text-stone-800 dark:text-stone-300 font-mono px-2 py-0.5 rounded font-bold uppercase">
@@ -2518,10 +2627,15 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 <div className="flex flex-col">
                   {tasks.map(t => (
                     <div key={t.id} className="h-12 border-b border-stone-200 dark:border-stone-850/60 px-4 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-stone-900/20 text-[11px]">
-                      <div className="truncate pr-2 font-bold text-stone-800 dark:text-stone-100 flex items-center gap-1.5">
+                      <div className="truncate pr-2 font-bold text-stone-800 dark:text-stone-100 flex items-center gap-1.5 flex-wrap">
                         {t.isCritical && <span className="w-1.5 h-1.5 rounded-full bg-red-505 animate-pulse" />}
                         {t.isMilestone && <span className="text-orange-400 font-extrabold pr-0.5">◆</span>}
                         {t.name}
+                        {shouldShowPendingWarning(t, config, currentDate) && (
+                          <span className="text-[9px] bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-500 font-mono font-bold px-1.5 py-0.5 rounded select-none">
+                            [⚠️]
+                          </span>
+                        )}
                       </div>
                       <div className="text-[10px] font-mono text-stone-500 dark:text-stone-400 shrink-0 text-right">
                         <span className={`${t.isCritical ? 'text-red-400 font-black' : ''}`}>{t.isCritical ? 'CRITICAL' : `${t.totalFloat}d margem`}</span>
@@ -2535,7 +2649,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
               <div className="w-full md:w-2/3 overflow-x-auto scrollbar-thin">
                 <div className="relative" style={{ width: `${timelineDates.length * colWidth}px` }}>
                   {/* Timeline Header Dates */}
-                  <div className="bg-stone-900 border-b border-stone-850 flex divide-x divide-stone-850/40 h-14">
+                  <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-100 border-stone-200'} border-b flex divide-x divide-stone-850/40 h-14`}>
                     {timelineDates.map((date, idx) => {
                       const dayStr = date.getDate();
                       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
@@ -2546,7 +2660,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                         <div
                           key={idx}
                           className={`flex-shrink-0 text-center flex flex-col justify-center h-full ${
-                            isWeekend ? 'bg-stone-900/80 text-stone-500' : 'text-stone-300'
+                            isWeekend 
+                              ? (isDark ? 'bg-stone-900/80 text-stone-500' : 'bg-stone-200 text-stone-500')
+                              : (isDark ? 'text-stone-300' : 'text-stone-700')
                           }`}
                           style={{ width: `${colWidth}px` }}
                         >
@@ -2633,7 +2749,10 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                               className={`absolute cursor-pointer rounded-md h-7 border flex items-center justify-between px-2 text-[9px] font-bold text-white transition z-20 truncate hover:scale-[1.01] ${barColor} ${isCriticalStyle}`}
                               style={{ left: `${left}px`, width: `${width}px` }}
                             >
-                              <span className="truncate">{t.name}</span>
+                              <span className="truncate">
+                                {t.name}
+                                {shouldShowPendingWarning(t, config, currentDate) && ' [⚠️]'}
+                              </span>
                               <span className="text-[8px] font-mono shrink-0 pl-1">{Math.round((width / colWidth))}d</span>
                             </div>
                           )}
@@ -2726,9 +2845,9 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         return (
           <div className="space-y-4 font-mono text-xs select-text">
             {/* CANVAS CONTROLS */}
-            <div className="bg-stone-900 border border-stone-850 p-4 rounded-lg flex flex-wrap items-center justify-between gap-4">
+            <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-50 border-stone-200'} border p-4 rounded-lg flex flex-wrap items-center justify-between gap-4`}>
               <div className="flex items-center gap-3">
-                <span className="text-[10px] uppercase font-black tracking-wider text-stone-400">Preset do Canvas:</span>
+                <span className={`text-[10px] uppercase font-black tracking-wider ${isDark ? 'text-stone-400' : 'text-stone-605'}`}>Preset do Canvas:</span>
                 <select
                   value={canvasPreset}
                   onChange={(e) => changePreset(e.target.value as any)}
@@ -2749,7 +2868,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 </button>
                 <button
                   onClick={handleClearCanvas}
-                  className="text-stone-500 hover:text-red-400 font-bold uppercase text-[10px] bg-stone-955 border border-stone-800 px-3 py-1.5 rounded hover:border-stone-750 transition flex items-center gap-1.5 cursor-pointer"
+                  className={`text-stone-500 hover:text-red-400 font-bold uppercase text-[10px] ${isDark ? 'bg-stone-955 border-stone-800' : 'bg-white border-stone-250 hover:bg-stone-50'} px-3 py-1.5 rounded border transition flex items-center gap-1.5 cursor-pointer`}
                 >
                   Limpar Canvas
                 </button>
@@ -2757,7 +2876,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             </div>
 
             {/* React Flow Board Wrapper */}
-            <div className="bg-stone-950 border border-stone-850 rounded-lg overflow-hidden relative" style={{ height: '560px' }}>
+            <div className={`${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-100 border-stone-250'} border rounded-lg overflow-hidden relative`} style={{ height: '560px' }}>
               <ReactFlow
                 nodes={localNodes}
                 edges={localEdges}
@@ -2773,13 +2892,13 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 maxZoom={1.5}
                 className="font-mono text-xs"
               >
-                <Background color="#333" gap={16} />
-                <Controls className="bg-stone-900 border border-stone-800 rounded outline-none p-1" />
+                <Background color={isDark ? '#333' : '#ccc'} gap={16} />
+                <Controls className={`${isDark ? 'bg-stone-900 border-stone-800' : 'bg-white border-stone-250'} rounded outline-none p-1`} />
                 <MiniMap 
-                  nodeStrokeColor={(n) => n.data?.color || '#333'}
-                  nodeColor={(n) => n.data?.color || '#111'}
-                  maskColor="rgba(0, 0, 0, 0.7)"
-                  className="bg-stone-900 border border-stone-800 rounded hidden md:block" 
+                  nodeStrokeColor={(n) => n.data?.color || (isDark ? '#333' : '#ccc')}
+                  nodeColor={(n) => n.data?.color || (isDark ? '#111' : '#eee')}
+                  maskColor={isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(255, 255, 255, 0.5)"}
+                  className={`${isDark ? 'bg-stone-900 border-stone-800' : 'bg-white border-stone-250'} rounded hidden md:block`} 
                 />
               </ReactFlow>
 
@@ -3128,7 +3247,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             <form onSubmit={saveTaskFormState} className="space-y-6">
               <fieldset disabled={permissions?.canCommentOnly} className="space-y-6">
               {/* ROW 1: BASICS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <label htmlFor="task-name-input" className="text-stone-400 block font-bold uppercase tracking-wide">Nome Principal / Atividade (WHAT)</label>
                   <input
@@ -3155,6 +3274,18 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                       <option key={w.id} value={w.id}>{w.code} - {w.name}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="task-area-input" className="text-stone-400 block font-bold uppercase tracking-wide">Área</label>
+                  <input
+                    id="task-area-input"
+                    type="text"
+                    placeholder="Ex: Elétrica, Mecânica"
+                    value={taskAreaInput}
+                    onChange={e => setTaskAreaInput(e.target.value)}
+                    className="mach-input"
+                  />
                 </div>
               </div>
 
@@ -3409,6 +3540,78 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         </div>
       )}
 
+      {showLooseTaskForm && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-stone-900 border border-stone-800 rounded w-full max-w-lg p-6 relative font-mono text-xs select-text my-8">
+            <button
+              onClick={() => setShowLooseTaskForm(false)}
+              className="absolute top-4 right-4 text-stone-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="text-sm font-black text-white uppercase tracking-wider pb-3 border-b border-stone-800 mb-4">
+              Criar Tarefa Avulsa
+            </h3>
+
+            <form onSubmit={saveLooseTask} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-stone-400 block font-bold uppercase tracking-wide">Nome da Atividade</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome da atividade"
+                  value={looseTaskName}
+                  onChange={e => setLooseTaskName(e.target.value)}
+                  className="mach-input font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-stone-400 block font-bold uppercase tracking-wide">Área</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Elétrica, Mecânica, Finanças"
+                  value={looseTaskArea}
+                  onChange={e => setLooseTaskArea(e.target.value)}
+                  className="mach-input"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-stone-400 block font-bold uppercase tracking-wide">Responsável</label>
+                <select
+                  value={looseTaskOwner}
+                  onChange={e => setLooseTaskOwner(e.target.value)}
+                  className="mach-input"
+                >
+                  <option value="">-- Selecione o Responsável --</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => setShowLooseTaskForm(false)}
+                  className="bg-stone-950 border border-stone-800 hover:border-stone-750 px-4 py-2 rounded text-stone-300 font-bold uppercase cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="mach-button-primary px-4 py-2 rounded text-white font-bold uppercase cursor-pointer"
+                >
+                  Criar Tarefa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 
@@ -3424,7 +3627,11 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
     }
     const updated = tasks.map(t => {
       if (t.id === taskId) {
-        return { ...t, status: targetStatus };
+        return { 
+          ...t, 
+          status: targetStatus,
+          completedDate: targetStatus === 'done' ? (t.completedDate || currentDate) : null
+        };
       }
       return t;
     });
@@ -3479,20 +3686,24 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 key={task.id}
                 draggable
                 onDragStart={(e) => handleTaskDragStart(e, task.id)}
-                className={`p-3 bg-stone-950 border border-stone-850 hover:border-stone-700 rounded transition text-xs relative ${
+                className={`p-3 ${isDark ? 'bg-stone-950 border-stone-850 hover:border-stone-700' : 'bg-white border-stone-200 hover:border-stone-300'} border rounded transition text-xs relative ${
                   dragsActiveBorder(task)
                 }`}
               >
                 <div className="flex items-start justify-between">
-                  <span className="text-[8px] font-mono font-bold text-stone-500 bg-stone-900 border border-stone-850 px-1 rounded">
+                  <span className={`text-[8px] font-mono font-bold ${isDark ? 'text-stone-500 bg-stone-900 border-stone-850' : 'text-stone-600 bg-stone-50 border-stone-200'} px-1 rounded`}>
                     {wbsCodeForId(task.wbsItemId)}
                   </span>
                   <div className="flex gap-1">
                     {/* Toggle Switch helper for easy mouse control */}
                     <button
                       onClick={() => handleEisQuickChange(task.id, 'urgent')}
-                      className={`text-[8px] font-mono font-bold px-1 rounded uppercase ${
-                        task.isUrgent ? 'bg-red-950 border border-red-800 text-red-400' : 'bg-stone-900 text-stone-600'
+                      className={`text-[8px] font-mono font-bold px-1 rounded uppercase border ${
+                        task.isUrgent 
+                          ? 'bg-red-955 border-red-800 text-red-450' 
+                          : isDark 
+                            ? 'bg-stone-900 border-transparent text-stone-600' 
+                            : 'bg-stone-100 border-stone-200 text-stone-500'
                       }`}
                       title="Alternar Urgência"
                     >
@@ -3500,8 +3711,12 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                     </button>
                     <button
                       onClick={() => handleEisQuickChange(task.id, 'important')}
-                      className={`text-[8px] font-mono font-bold px-1 rounded uppercase ${
-                        task.isImportant ? 'bg-orange-950 border border-orange-800 text-orange-400' : 'bg-stone-900 text-stone-600'
+                      className={`text-[8px] font-mono font-bold px-1 rounded uppercase border ${
+                        task.isImportant 
+                          ? 'bg-orange-955 border-orange-800 text-orange-450' 
+                          : isDark 
+                            ? 'bg-stone-900 border-transparent text-stone-600' 
+                            : 'bg-stone-100 border-stone-200 text-stone-500'
                       }`}
                       title="Alternar Importância"
                     >
@@ -3510,15 +3725,20 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   </div>
                 </div>
 
-                <p className="font-extrabold text-stone-100 dark:text-white mt-1.5 uppercase leading-normal">
+                <p className={`font-extrabold ${isDark ? 'text-white' : 'text-stone-900'} mt-1.5 uppercase leading-normal flex items-center gap-1.5 flex-wrap`}>
                   {task.name}
+                  {shouldShowPendingWarning(task, config, currentDate) && (
+                    <span className="text-[9px] bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-500 font-mono font-bold px-1.5 py-0.5 rounded select-none">
+                      [⚠️ Info Pendente]
+                    </span>
+                  )}
                 </p>
 
-                <div className="flex items-center justify-between text-[10px] font-mono text-stone-400 border-t border-stone-900 mt-2 pt-2">
-                  <span className="truncate max-w-[120px] font-semibold text-stone-300">
+                <div className={`flex items-center justify-between text-[10px] font-mono ${isDark ? 'text-stone-400 border-stone-900' : 'text-stone-500 border-stone-100'} border-t mt-2 pt-2`}>
+                  <span className={`truncate max-w-[120px] font-semibold ${isDark ? 'text-stone-300' : 'text-stone-750'}`}>
                     {userMap[task.whoOwnerId || ''] || 'Responsável Pendente'}
                   </span>
-                  <span className="text-yellow-600 font-bold whitespace-nowrap">
+                  <span className="text-yellow-600 dark:text-yellow-500 font-bold whitespace-nowrap">
                     R$ {task.howMuch || 0}
                   </span>
                 </div>
@@ -3656,8 +3876,13 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                   <div className="flex items-start gap-2">
                     <span className="w-2 h-2 rounded-full bg-stone-500 mt-1.5 shrink-0"></span>
                     <div className="flex flex-col">
-                      <p className="font-semibold text-stone-900 dark:text-white uppercase italic tracking-wide">
+                      <p className="font-semibold text-stone-900 dark:text-white uppercase italic tracking-wide flex items-center gap-1.5 flex-wrap">
                         {task.name}
+                        {shouldShowPendingWarning(task, config, currentDate) && (
+                          <span className="text-[9px] bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-500 font-mono font-bold px-1.5 py-0.5 rounded select-none">
+                            [⚠️ Info Pendente]
+                          </span>
+                        )}
                       </p>
                       {task.why && (
                         <span className="text-[10.5px] text-stone-500 dark:text-stone-400 font-sans leading-normal">

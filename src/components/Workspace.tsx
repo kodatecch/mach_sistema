@@ -426,7 +426,8 @@ export default function Workspace({
                         { key: 'enableKanban', label: 'Quadro Kanban' },
                         { key: 'enableEisenhower', label: 'Matriz Eisenhower' },
                         { key: 'enableGantt', label: 'Gráfico de Gantt' },
-                        { key: 'enableFlowchart', label: 'CANVAS / ReactFlow' }
+                        { key: 'enableFlowchart', label: 'CANVAS / ReactFlow' },
+                        { key: 'enablePendingWarnings', label: 'Sinalizar Info Pendente' }
                       ].map(method => {
                         const isEnabled = config[method.key as keyof OrgConfig] !== false;
                         return (
@@ -956,6 +957,7 @@ export default function Workspace({
                       users={users}
                       permissions={permissions}
                       config={config}
+                      currentDate={currentDate}
                     />
                   </motion.div>
                 )}

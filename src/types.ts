@@ -79,6 +79,10 @@ export interface Task {
   progress?: number;
   plannedCost?: number;
 
+  area?: string | null;
+  completedDate?: string | null;
+  isLoose?: boolean;
+
   createdAt?: string;
   updatedAt?: string;
 }
@@ -284,6 +288,7 @@ export interface OrgConfig {
   enableRisksReports?: boolean;
   enableRisksScope?: boolean;
   enableRisksEvm?: boolean;
+  enablePendingWarnings?: boolean;
 }
 
 // Maps memberId → array of projectIds they can see

@@ -150,6 +150,7 @@ const DEFAULT_SCOPE_CHANGES = (projectId: string): ScopeChangeLog[] => [
 ];
 
 export default function RiskManagement({ activeProject, activeUser, permissions, config }: RiskManagementProps) {
+  const isDark = config?.theme === 'dark';
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -590,9 +591,32 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
   // 6. Heatmap Styling Helpers
   const cellColorClass = (p: number, i: number) => {
     const score = p * i;
-    if (score >= 15) return 'bg-[#7f1d1d]/90 text-red-100 hover:bg-[#991b1b] border-[#ef4444]/40';
-    if (score >= 9) return 'bg-[#78350f]/90 text-amber-100 hover:bg-[#92400e] border-[#f59e0b]/40';
-    return 'bg-[#1c1917]/90 text-stone-300 hover:bg-stone-800 border-stone-800';
+    const isThreat = heatmapCategory === 'threat';
+    if (isDark) {
+      if (score >= 15) {
+        return isThreat 
+          ? 'bg-[#7f1d1d]/90 text-red-100 hover:bg-[#991b1b] border-[#ef4444]/40'
+          : 'bg-[#14532d]/90 text-green-100 hover:bg-[#166534] border-[#22c55e]/40';
+      }
+      if (score >= 9) {
+        return isThreat
+          ? 'bg-[#78350f]/90 text-amber-100 hover:bg-[#92400e] border-[#f59e0b]/40'
+          : 'bg-[#0c4a6e]/90 text-cyan-100 hover:bg-[#075985] border-[#06b6d4]/40';
+      }
+      return 'bg-[#1c1917]/90 text-stone-300 hover:bg-stone-800 border-stone-800';
+    } else {
+      if (score >= 15) {
+        return isThreat
+          ? 'bg-red-50 text-red-750 hover:bg-red-100 border-red-200/60'
+          : 'bg-green-50 text-green-750 hover:bg-green-100 border-green-200/60';
+      }
+      if (score >= 9) {
+        return isThreat
+          ? 'bg-amber-50 text-amber-750 hover:bg-amber-100 border-amber-200/60'
+          : 'bg-cyan-50 text-cyan-750 hover:bg-cyan-100 border-cyan-200/60';
+      }
+      return 'bg-stone-50 text-stone-700 hover:bg-stone-100 border-stone-200/60';
+    }
   };
 
   // Counts of elements inside Heatmap cells based on category (threat / opportunity)
@@ -650,11 +674,10 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
 
   return (
     <div className="w-full space-y-6" id="riscos-monitoramento-root">
-      
       {/* HEADER WITH METADATA BADGES */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-stone-900 border border-stone-850 rounded-lg gap-4">
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border rounded-lg gap-4`}>
         <div>
-          <h1 className="text-lg font-display font-black text-white uppercase tracking-wider flex items-center gap-2 mt-1">
+          <h1 className={`text-lg font-display font-black ${isDark ? 'text-white' : 'text-stone-900'} uppercase tracking-wider flex items-center gap-2 mt-1`}>
             <ShieldAlert className="w-5.5 h-5.5 text-red-500" />
             Riscos e Monitoramento Sistemático
           </h1>
@@ -662,14 +685,14 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
       </div>
 
       {/* DASHBOARD LEVEL LEVEL SUB NAVIGATION */}
-      <div className="flex border-b border-stone-850 gap-2 overflow-x-auto pb-px select-none">
+      <div className={`flex border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} gap-2 overflow-x-auto pb-px select-none`}>
         {enabledTabs.includes('riscos') && (
           <button 
             onClick={() => { setSubTab('riscos'); setSelectedCell(null); }}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
               subTab === 'riscos' 
-                ? 'border-red-500 text-red-502' 
-                : 'border-transparent text-stone-400 hover:text-white'
+                ? 'border-red-505 text-red-650' 
+                : `border-transparent text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
@@ -682,8 +705,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             onClick={() => setSubTab('relatorios')}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
               subTab === 'relatorios' 
-                ? 'border-red-500 text-red-502' 
-                : 'border-transparent text-stone-400 hover:text-white'
+                ? 'border-red-505 text-red-650' 
+                : `border-transparent text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -696,8 +719,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             onClick={() => setSubTab('escopo')}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
               subTab === 'escopo' 
-                ? 'border-red-500 text-red-502' 
-                : 'border-transparent text-stone-400 hover:text-white'
+                ? 'border-red-505 text-red-655' 
+                : `border-transparent text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -710,8 +733,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             onClick={() => setSubTab('evm')}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
               subTab === 'evm' 
-                ? 'border-red-500 text-red-502' 
-                : 'border-transparent text-stone-400 hover:text-white'
+                ? 'border-red-505 text-red-650' 
+                : `border-transparent text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
@@ -758,17 +781,16 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             
             {/* MATRIX AND SUMMARY CARDS GRAPHICAL HEATMAP */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
               {/* INTERACTIVE 5x5 HEATMAP GRID */}
-              <div className="lg:col-span-7 bg-stone-900 border border-stone-850 rounded-lg p-5">
+              <div className={`lg:col-span-7 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border rounded-lg p-5`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 select-none">
                   <div>
-                    <h2 className="text-xs font-bold font-mono uppercase text-[#e5e5e5]">Heatmap de Engenharia 5x5</h2>
+                    <h2 className={`text-xs font-bold font-mono uppercase ${isDark ? 'text-[#e5e5e5]' : 'text-stone-900'}`}>Heatmap de Engenharia 5x5</h2>
                     <p className="text-[10px] text-stone-450 mt-0.5">Clique nas células para isolar os riscos correspondentes no Registro.</p>
                   </div>
 
                   {/* CHANGER SWITCH THREATS VS OPPORTUNITIES */}
-                  <div className="flex border border-stone-800 rounded bg-stone-955 p-0.5 text-[9px] font-mono leading-none">
+                  <div className={`flex border ${isDark ? 'border-stone-800 bg-stone-950' : 'border-stone-200 bg-stone-100'} rounded p-0.5 text-[9px] font-mono leading-none`}>
                     <button 
                       type="button"
                       onClick={() => { setHeatmapCategory('threat'); setSelectedCell(null); }}
@@ -803,12 +825,12 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                               type="button"
                               onClick={() => setSelectedCell(isSelected ? null : cellKey)}
                               className={`h-11 border rounded font-mono text-center flex flex-col justify-center items-center transition relative ${cellColorClass(pVal, iVal)} ${
-                                isSelected ? 'ring-2 ring-red-500 scale-102 border-transparent' : 'border-stone-850'
+                                isSelected ? 'ring-2 ring-red-500 scale-102 border-transparent' : (isDark ? 'border-stone-850' : 'border-stone-200/60')
                               }`}
                               title={`Probabilidade ${pVal} × Impacto ${iVal} (Score: ${pVal * iVal})`}
                             >
                               {count > 0 ? (
-                                <span className="bg-white text-stone-950 rounded-full w-5.5 h-5.5 flex items-center justify-center text-[11px] font-extrabold border border-stone-300 shadow-lg animate-bounce">
+                                <span className="bg-white text-stone-955 rounded-full w-5.5 h-5.5 flex items-center justify-center text-[11px] font-extrabold border border-stone-300 shadow-lg animate-bounce">
                                   {count}
                                 </span>
                               ): (
@@ -832,7 +854,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center text-[9px] text-stone-500 font-mono mt-4 pt-4 border-t border-stone-850 select-none">
+                <div className={`flex justify-between items-center text-[9px] text-stone-500 font-mono mt-4 pt-4 border-t ${isDark ? 'border-stone-850' : 'border-stone-200'} select-none`}>
                   <span>🟢 Baixo Risco (Score 1-8)</span>
                   <span>🟡 Atenção (Score 9-14)</span>
                   <span>🔴 Alto Risco (Score 15-25)</span>
@@ -840,24 +862,24 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
               </div>
 
               {/* ACTION RECOMMENDATIONS WIDGET */}
-              <div className="lg:col-span-5 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+              <div className={`lg:col-span-5 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border p-5 rounded-lg flex flex-col justify-between`}>
                 <div className="space-y-4 text-xs font-sans">
                   <div className="flex items-center gap-2 text-red-500 font-mono text-[9px] uppercase font-bold tracking-wider">
                     <Compass className="w-4 h-4" /> Diretrizes de Contingenciamento
                   </div>
-                  <h3 className="text-sm font-bold text-white leading-snug">Metodologia Trino: Isolar e Mitigar</h3>
+                  <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-stone-900'} leading-snug`}>Metodologia Trino: Isolar e Mitigar</h3>
                   
-                  <p className="text-stone-400 leading-relaxed text-[11px]">
+                  <p className={`${isDark ? 'text-stone-400' : 'text-stone-600'} leading-relaxed text-[11px]`}>
                     Todas as classificações de risco são calculadas em tempo real pelo motor de persistência. A Watch List garante monitoramento estendido de itens marginais, sem comprometer o fluxo de sprint de usinagem.
                   </p>
 
-                  <div className="p-3 bg-stone-950 border border-stone-850 rounded space-y-1.5 font-mono text-[11px]">
+                  <div className={`p-3 ${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-55 border-stone-200'} rounded border space-y-1.5 font-mono text-[11px]`}>
                     <div className="text-amber-500 font-extrabold uppercase text-[9px] flex items-center gap-1">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                       ALERTA RECOMENDADO SUSPENSÃO:
                     </div>
-                    <p className="text-stone-400 italic leading-relaxed text-[10px]">
-                      "A folga residual nos cubos dianteiros exige ensaio não-destrutivo térmico. Em caso de torção plástica, o plano B deve acionar as mangas reservas de titânio usinadas."
+                    <p className={`${isDark ? 'text-stone-400' : 'text-stone-650'} italic leading-relaxed text-[10px]`}>
+                      "A folga residual nos cubos dianteiros exige ensaio não-destrutivo térmico. Em caso de torção plástica, o plano B deve acionar as mangas reservas de titânio usinadas."o. Em caso de torção plástica, o plano B deve acionar as mangas reservas de titânio usinadas."
                     </p>
                   </div>
                 </div>
@@ -874,12 +896,12 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             </div>
 
             {/* RISKS REGISTER TABLE AND WATCH LIST VIEWS */}
-            <div className="bg-stone-900 border border-stone-850 rounded-lg p-5 space-y-4">
+            <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border rounded-lg p-5 space-y-4`}>
               
               {/* FILTERS TOOLBAR */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
                 <div>
-                  <h3 className="text-xs font-bold font-mono uppercase text-[#e5e5e5]">Registro Geral de Riscos</h3>
+                  <h3 className={`text-xs font-bold font-mono uppercase ${isDark ? 'text-[#e5e5e5]' : 'text-stone-900'}`}>Registro Geral de Riscos</h3>
                   <p className="text-[10px] text-stone-450 mt-0.5">Tabela dinâmica classificada por severidade de impacto.</p>
                 </div>
 
@@ -913,7 +935,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                     <select 
                       value={riskStatusFilter} 
                       onChange={e => { setRiskStatusFilter(e.target.value); setSelectedCell(null); }}
-                      className="bg-stone-955 border border-stone-800 text-stone-300 rounded px-2.5 py-1 text-xs"
+                      className={`bg-white dark:bg-stone-955 border ${isDark ? 'border-stone-800 text-stone-300' : 'border-stone-200 text-stone-900'} rounded px-2.5 py-1 text-xs cursor-pointer`}
                     >
                       <option value="all">Filtro: Todos os Riscos</option>
                       <option value="active">Status: Ativo</option>
@@ -929,7 +951,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                     <select 
                       value={riskAreaFilter} 
                       onChange={e => { setRiskAreaFilter(e.target.value); setSelectedCell(null); }}
-                      className="bg-stone-955 border border-stone-800 text-stone-300 rounded px-2.5 py-1 text-xs"
+                      className={`bg-white dark:bg-stone-955 border ${isDark ? 'border-stone-800 text-stone-300' : 'border-stone-200 text-stone-900'} rounded px-2.5 py-1 text-xs cursor-pointer`}
                     >
                       <option value="all">Área: Todas</option>
                       <option value="Técnico">Área: Técnico</option>
@@ -945,7 +967,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                     <select 
                       value={riskSortKey} 
                       onChange={e => setRiskSortKey(e.target.value as any)}
-                      className="bg-stone-955 border border-stone-800 text-stone-300 rounded px-2.5 py-1 text-xs"
+                      className={`bg-white dark:bg-stone-955 border ${isDark ? 'border-stone-800 text-stone-300' : 'border-stone-200 text-stone-900'} rounded px-2.5 py-1 text-xs cursor-pointer`}
                     >
                       <option value="riskScore">Severidade (Score)</option>
                       <option value="probability">Crescente Probabilidade</option>
@@ -968,9 +990,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
 
               {/* REGISTER TABLE GRID */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-stone-300 select-text font-sans">
+                <table className={`w-full text-left text-xs ${isDark ? 'text-stone-300' : 'text-stone-800'} select-text font-sans`}>
                   <thead>
-                    <tr className="border-b border-stone-850 text-stone-400 font-mono text-[10px] uppercase">
+                    <tr className={`border-b ${isDark ? 'border-stone-850 text-stone-400' : 'border-stone-200 text-stone-600'} font-mono text-[10px] uppercase`}>
                       <th className="py-2.5 px-3">Risco / Categoria</th>
                       <th className="py-2.5 px-3">Área / Proprietário</th>
                       <th className="py-2.5 px-3">P × I = Score</th>
@@ -982,9 +1004,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                     {processedRisks.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="p-8">
-                          <div className="text-center py-8 px-4 bg-stone-955/20 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 font-mono">
+                          <div className={`text-center py-8 px-4 ${isDark ? 'bg-stone-955/20 border-stone-800 text-stone-300' : 'bg-stone-50 border-stone-200 text-stone-600'} border border-dashed rounded flex flex-col items-center justify-center space-y-2 font-mono`}>
                             <Inbox className="w-8 h-8 text-stone-700/60" />
-                            <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Risco Qualificado</p>
+                            <p className="text-xs font-bold uppercase tracking-wider">Nenhum Risco Qualificado</p>
                             <p className="text-[10px] text-stone-500 max-w-xs">Não existem riscos cadastrados ou nenhum corresponde aos filtros atuais.</p>
                           </div>
                         </td>
@@ -993,11 +1015,11 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       processedRisks.map((risk) => {
                         const scoreColor = risk.riskScore >= 15 ? 'text-red-500 bg-red-950/20 border-red-900/60' : risk.riskScore >= 9 ? 'text-amber-500 bg-amber-950/20 border-amber-900/60' : 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60';
                         return (
-                          <tr key={risk.id} className="border-b border-stone-850 hover:bg-stone-955 transition-colors">
+                          <tr key={risk.id} className={`border-b ${isDark ? 'border-stone-850 hover:bg-stone-955' : 'border-stone-200 hover:bg-stone-50/50'} transition-colors`}>
                             <td className="py-3 px-3 max-w-sm">
                               <div className="flex items-center gap-1.5 mb-1 select-none">
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono leading-none font-bold uppercase border ${
-                                  risk.category === 'threat' ? 'bg-red-950/40 border-red-900 text-red-400' : 'bg-emerald-955/40 border-emerald-900 text-emerald-400'
+                                  risk.category === 'threat' ? 'bg-red-955/40 border-red-905 text-red-400' : 'bg-emerald-955/40 border-emerald-900 text-emerald-400'
                                 }`}>
                                   {risk.category === 'threat' ? 'Ameaça' : 'Oportunidade'}
                                 </span>
@@ -1007,7 +1029,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                                   </span>
                                 )}
                               </div>
-                              <div className="font-bold text-white tracking-tight leading-relaxed">{risk.title}</div>
+                              <div className={`font-bold ${isDark ? 'text-white' : 'text-stone-900'} tracking-tight leading-relaxed`}>{risk.title}</div>
                               {risk.description && <div className="text-[10px] text-stone-450 mt-1 select-text">{risk.description}</div>}
                             </td>
                             
@@ -1027,8 +1049,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
 
                             <td className="py-3 px-3 text-[10px] font-mono max-w-md">
                               <div className="space-y-1 select-text">
-                                <div><strong className="text-stone-400 uppercase text-[9px]">Mitigação:</strong> <span className="text-stone-300 italic">"{risk.mitigationPlan || 'Sem plano estabelecido'}"</span></div>
-                                <div className="mt-1"><strong className="text-red-500 uppercase text-[9px]">Contingência:</strong> <span className="text-stone-300 italic">"{risk.contingencyPlan || 'Nenhum'}"</span></div>
+                                <div><strong className="text-stone-500 dark:text-stone-400 uppercase text-[9px]">Mitigação:</strong> <span className={`${isDark ? 'text-stone-300' : 'text-stone-750'} italic`}>"{risk.mitigationPlan || 'Sem plano estabelecido'}"</span></div>
+                                <div className="mt-1"><strong className="text-red-500 uppercase text-[9px]">Contingência:</strong> <span className={`${isDark ? 'text-stone-300' : 'text-stone-750'} italic`}>"{risk.contingencyPlan || 'Nenhum'}"</span></div>
                               </div>
                             </td>
 
@@ -1037,15 +1059,15 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                                 {risk.status === 'watch_list' ? (
                                   <button 
                                     onClick={() => handlePatchRiskStatus(risk.id, 'active')}
-                                    className="bg-amber-652 hover:bg-amber-600 text-stone-950 font-mono font-bold text-[9px] py-1 px-2.5 rounded uppercase leading-none transition-colors cursor-pointer flex items-center gap-1 justify-center shadow"
+                                    className="bg-amber-652 hover:bg-amber-600 text-stone-955 font-mono font-bold text-[9px] py-1 px-2.5 rounded uppercase leading-none transition-colors cursor-pointer flex items-center gap-1 justify-center shadow"
                                   >
-                                    <RotateCcw className="w-3 h-3 text-stone-950" /> Reativar para Ativo
+                                    <RotateCcw className="w-3 h-3 text-stone-955" /> Reativar para Ativo
                                   </button>
                                 ) : (
                                   <select 
                                     value={risk.status} 
                                     onChange={e => handlePatchRiskStatus(risk.id, e.target.value as any)}
-                                    className="bg-stone-955 border border-stone-800 text-stone-200 text-[10px] font-mono rounded px-2 py-0.5 text-center uppercase cursor-pointer"
+                                    className={`bg-white dark:bg-stone-955 border ${isDark ? 'border-stone-800 text-stone-200' : 'border-stone-200 text-stone-800'} text-[10px] font-mono rounded px-2 py-0.5 text-center uppercase cursor-pointer`}
                                   >
                                     <option value="active">Ativo</option>
                                     <option value="watch_list">Mover l/ Watch List</option>
@@ -1071,9 +1093,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
             
             {/* RECORD CREATOR FORM FORM */}
-            <div className="lg:col-span-4 bg-stone-900 border border-stone-850 p-5 rounded-lg h-fit space-y-4">
-              <div className="border-b border-stone-850 pb-3">
-                <h3 className="text-xs font-bold font-mono uppercase text-[#e5e5e5] flex items-center gap-1.5">
+            <div className={`lg:col-span-4 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border p-5 rounded-lg h-fit space-y-4`}>
+              <div className={`border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} pb-3`}>
+                <h3 className={`text-xs font-bold font-mono uppercase ${isDark ? 'text-[#e5e5e5]' : 'text-stone-900'} flex items-center gap-1.5`}>
                   <Plus className="w-4 h-4 text-red-500" /> Registar Relatório Semanal
                 </h3>
                 <p className="text-[10px] text-stone-450 mt-0.5">Formalize o progresso acumulado na semana para os mentores.</p>
@@ -1088,8 +1110,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       onClick={() => setRepStatus('good')}
                       className={`py-2 px-1.5 rounded text-center border font-mono text-[10px] uppercase font-bold transition-colors cursor-pointer ${
                         repStatus === 'good' 
-                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-500' 
-                          : 'bg-stone-955 border-stone-850 text-stone-400 hover:text-[#fff]'
+                          ? 'bg-emerald-950/40 border-emerald-500 text-emerald-555' 
+                          : `${isDark ? 'bg-stone-950 border-stone-850 text-stone-400 hover:text-white' : 'bg-stone-50 border-stone-200 text-stone-600 hover:text-stone-900'}`
                       }`}
                     >
                       🟢 Estável (Good)
@@ -1099,8 +1121,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       onClick={() => setRepStatus('at_risk')}
                       className={`py-2 px-1.5 rounded text-center border font-mono text-[10px] uppercase font-bold transition-colors cursor-pointer ${
                         repStatus === 'at_risk' 
-                          ? 'bg-amber-952/40 border-amber-500 text-amber-500' 
-                          : 'bg-stone-955 border-stone-850 text-stone-400 hover:text-[#fff]'
+                          ? 'bg-amber-955/40 border-amber-500 text-amber-555' 
+                          : `${isDark ? 'bg-stone-950 border-stone-850 text-stone-400 hover:text-white' : 'bg-stone-50 border-stone-200 text-stone-600 hover:text-stone-900'}`
                       }`}
                     >
                       🟡 Em Risco (Warn)
@@ -1110,8 +1132,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       onClick={() => setRepStatus('critical')}
                       className={`py-2 px-1.5 rounded text-center border font-mono text-[10px] uppercase font-bold transition-colors cursor-pointer ${
                         repStatus === 'critical' 
-                          ? 'bg-red-952/40 border-red-500 text-red-500' 
-                          : 'bg-stone-955 border-stone-850 text-stone-400 hover:text-[#fff]'
+                          ? 'bg-red-955/40 border-red-500 text-red-555' 
+                          : `${isDark ? 'bg-stone-950 border-stone-850 text-stone-400 hover:text-white' : 'bg-stone-50 border-stone-200 text-stone-600 hover:text-stone-900'}`
                       }`}
                     >
                       🔴 Alerta Crítico
@@ -1168,32 +1190,32 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             </div>
 
             {/* PROGRESS HISTORY NAVIGATOR VIEW */}
-            <div className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg space-y-4">
-              <div className="flex items-center justify-between border-b border-stone-850 pb-3">
+            <div className={`lg:col-span-8 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border p-5 rounded-lg space-y-4`}>
+              <div className={`flex items-center justify-between border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} pb-3`}>
                 <div>
-                  <h3 className="text-xs font-bold font-mono uppercase text-[#e5e5e5] flex items-center gap-1.5">
+                  <h3 className={`text-xs font-bold font-mono uppercase ${isDark ? 'text-[#e5e5e5]' : 'text-stone-900'} flex items-center gap-1.5`}>
                     <History className="w-4 h-4 text-red-500" /> Relatório Executivo Semanal (Histórico)
                   </h3>
                   <p className="text-[10px] text-stone-450 mt-0.5">Histórico navegável de lançamentos executivos da engenharia.</p>
                 </div>
 
                 {statusReports.length > 0 && (
-                  <span className="bg-stone-955 border border-stone-800 text-[10px] font-mono text-stone-400 px-2 py-0.5 rounded font-bold">
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${isDark ? 'bg-stone-955 border-stone-800 text-stone-400' : 'bg-stone-50 border-stone-200 text-stone-650'}`}>
                     Total: {statusReports.length} Relatórios
                   </span>
                 )}
               </div>
 
               {statusReports.length === 0 ? (
-                <div className="text-center py-16 bg-stone-955/20 border border-dashed border-stone-800 rounded-lg flex flex-col items-center justify-center space-y-3 animate-fade-in w-full">
+                <div className={`text-center py-16 ${isDark ? 'bg-stone-955/20 border-stone-800' : 'bg-stone-50 border-stone-200'} border border-dashed rounded-lg flex flex-col items-center justify-center space-y-3 animate-fade-in w-full`}>
                   <Inbox className="w-12 h-12 text-stone-600 mx-auto mb-3" />
-                  <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Boletim Registrado</p>
+                  <p className="text-xs font-bold uppercase tracking-wider">Nenhum Boletim Registrado</p>
                   <p className="text-[10px] text-stone-500 max-w-xs">A equipe ainda não registrou nenhum boletim semanal de progresso físico para este projeto.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   {/* Date Sidebar Navigator */}
-                  <div className="md:col-span-4 bg-stone-955/50 rounded-lg border border-stone-850 overflow-hidden divide-y divide-stone-850/60 select-none">
+                  <div className={`md:col-span-4 ${isDark ? 'bg-stone-955/50 border-stone-850' : 'bg-stone-50 border-stone-200'} rounded-lg border overflow-hidden divide-y divide-stone-850/60 select-none`}>
                     {statusReports.map((report, idx) => {
                       const isSelected = selectedReportHistoryIndex === idx;
                       const statusCircle = report.projectStatus === 'good' ? 'bg-emerald-500' : report.projectStatus === 'at_risk' ? 'bg-amber-500' : 'bg-red-500';
@@ -1202,7 +1224,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                           key={report.id}
                           onClick={() => setSelectedReportHistoryIndex(idx)}
                           className={`w-full text-left p-3 flex items-center justify-between text-xs font-mono transition-colors cursor-pointer ${
-                            isSelected ? 'bg-red-952/10 text-red-400 font-extrabold' : 'text-stone-400 hover:bg-stone-900 hover:text-white'
+                            isSelected 
+                              ? 'bg-red-500/10 text-red-650 dark:text-red-400 font-extrabold' 
+                              : `text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-900 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -1216,18 +1240,18 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                   </div>
 
                   {/* ACTIVE DATA VIEWER */}
-                  <div className="md:col-span-8 bg-stone-955/20 border border-stone-852/40 p-5 rounded-lg space-y-4 font-sans select-text" id="status-report-pdf-container">
+                  <div className={`md:col-span-8 ${isDark ? 'bg-stone-955/20 border-stone-850/40' : 'bg-stone-50 border-stone-200'} p-5 rounded-lg space-y-4 font-sans select-text`} id="status-report-pdf-container">
                     {(() => {
                       const activeRep = statusReports[selectedReportHistoryIndex];
                       if (!activeRep) return null;
-                      const lightIndicator = activeRep.projectStatus === 'good' ? 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60' : activeRep.projectStatus === 'at_risk' ? 'text-amber-500 bg-[#78350f]/20 border-amber-900/60' : 'text-red-500 bg-red-952/20 border-red-900/60';
+                      const lightIndicator = activeRep.projectStatus === 'good' ? 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60' : activeRep.projectStatus === 'at_risk' ? 'text-amber-500 bg-[#78350f]/20 border-amber-900/60' : 'text-red-500 bg-red-950/20 border-red-900/60';
                       const lightLabel = activeRep.projectStatus === 'good' ? 'Estável (Operação Normal)' : activeRep.projectStatus === 'at_risk' ? 'Em Atenção / Alerta de Riscos' : 'Crítico / Intervenção Recomenda';
                       return (
                         <div className="space-y-4">
-                          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-stone-850 select-none">
+                          <div className={`flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} select-none`}>
                             <div className="flex items-center gap-2">
                               <Clock className="w-4 h-4 text-stone-500" />
-                              <span className="text-xs text-white font-bold font-mono">Emissão: {activeRep.reportDate}</span>
+                              <span className={`text-xs ${isDark ? 'text-white' : 'text-stone-900'} font-bold font-mono`}>Emissão: {activeRep.reportDate}</span>
                               <button
                                 type="button"
                                 onClick={() => exportToPDF('status-report-pdf-container', `StatusReport_${activeRep.reportDate}.pdf`)}
@@ -1246,21 +1270,21 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                           <div className="space-y-3.5">
                             <div>
                               <h4 className="text-[10px] font-mono text-emerald-500 font-bold uppercase tracking-wider mb-1">🏁 Principais Realizações (Concluídos)</h4>
-                              <p className="text-stone-300 text-xs leading-relaxed italic bg-stone-990 p-3 rounded border border-stone-850/40 select-text">
+                              <p className={`text-xs leading-relaxed italic p-3 rounded border select-text ${isDark ? 'text-stone-300 bg-stone-955 border-stone-850/40' : 'text-stone-750 bg-white border-stone-200'}`}>
                                 "{activeRep.accomplishments}"
                               </p>
                             </div>
 
                             <div>
                               <h4 className="text-[10px] font-mono text-stone-400 font-bold uppercase tracking-wider mb-1">🔧 Atividades em Andamento</h4>
-                              <p className="text-stone-300 text-xs leading-relaxed italic bg-stone-990 p-3 rounded border border-stone-850/40 select-text">
+                              <p className={`text-xs leading-relaxed italic p-3 rounded border select-text ${isDark ? 'text-stone-300 bg-stone-955 border-stone-850/40' : 'text-stone-750 bg-white border-stone-200'}`}>
                                 "{activeRep.ongoingTasks}"
                               </p>
                             </div>
 
                             <div>
                               <h4 className="text-[10px] font-mono text-[#DC2626] font-bold uppercase tracking-wider mb-1">🚧 Impedimentos e Gargalos Técnicos</h4>
-                              <p className="text-red-300/90 text-xs leading-relaxed italic bg-stone-990 p-3 rounded border border-stone-850/40 select-text">
+                              <p className={`text-xs leading-relaxed italic p-3 rounded border select-text ${isDark ? 'text-red-405 bg-stone-955 border-stone-850/40' : 'text-red-800 bg-red-50 border-red-100'}`}>
                                 "{activeRep.blockers}"
                               </p>
                             </div>
@@ -1283,9 +1307,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* CHANGE FORM */}
-              <div className="lg:col-span-4 bg-stone-900 border border-stone-850 p-5 rounded-lg h-fit space-y-4">
-                <div className="border-b border-stone-850 pb-3">
-                  <h3 className="text-xs font-bold font-mono uppercase text-[#e5e5e5] flex items-center gap-1.5">
+              <div className={`lg:col-span-4 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border p-5 rounded-lg h-fit space-y-4`}>
+                <div className={`border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} pb-3`}>
+                  <h3 className={`text-xs font-bold font-mono uppercase ${isDark ? 'text-[#e5e5e5]' : 'text-stone-900'} flex items-center gap-1.5`}>
                     <Plus className="w-4 h-4 text-red-500" /> Propor Ajuste de Escopo
                   </h3>
                   <p className="text-[10px] text-stone-450 mt-0.5">Registre alterações que causem desvios de tempo ou orçamento.</p>
@@ -1381,13 +1405,11 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       rows={2}
                       value={scJustification}
                       onChange={e => setScJustification(e.target.value)}
-                      placeholder="Parecer técnico ou financeiro para justificar aprovação ou veto..."
-                      className="mach-input"
                     />
                   </div>
 
                   {/* Real-time Technical Regulation Validation */}
-                  <div className="bg-stone-950 p-3 rounded border border-stone-800 space-y-2 font-mono text-[10px]">
+                  <div className={`p-3 rounded border space-y-2 font-mono text-[10px] ${isDark ? 'bg-stone-950 border-stone-800' : 'bg-stone-50 border-stone-200'}`}>
                     <span className="text-[#DC2626] font-bold uppercase tracking-wider block">Conformidade Técnica (F1 in Schools):</span>
                     
                     <div className="grid grid-cols-3 gap-2">
@@ -1398,7 +1420,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                           value={scWeight || ''}
                           onChange={e => setScWeight(Number(e.target.value))}
                           placeholder="Ex: 52"
-                          className="w-full bg-stone-900 border border-stone-800 rounded p-1 text-center font-mono text-white text-[10px]"
+                          className={`w-full ${isDark ? 'bg-stone-900 border-stone-800 text-white' : 'bg-white border-stone-200 text-stone-900'} rounded p-1 text-center font-mono text-[10px]`}
                         />
                       </div>
                       
@@ -1409,7 +1431,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                           value={scLength || ''}
                           onChange={e => setScLength(Number(e.target.value))}
                           placeholder="Ex: 190"
-                          className="w-full bg-stone-900 border border-stone-800 rounded p-1 text-center font-mono text-white text-[10px]"
+                          className={`w-full ${isDark ? 'bg-stone-900 border-stone-800 text-white' : 'bg-white border-stone-200 text-stone-900'} rounded p-1 text-center font-mono text-[10px]`}
                         />
                       </div>
 
@@ -1420,7 +1442,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                           value={scWidth || ''}
                           onChange={e => setScWidth(Number(e.target.value))}
                           placeholder="Ex: 62"
-                          className="w-full bg-stone-900 border border-stone-800 rounded p-1 text-center font-mono text-white text-[10px]"
+                          className={`w-full ${isDark ? 'bg-stone-900 border-stone-800 text-white' : 'bg-white border-stone-200 text-stone-900'} rounded p-1 text-center font-mono text-[10px]`}
                         />
                       </div>
                     </div>
@@ -1444,7 +1466,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
 
                       if (warnings.length > 0) {
                         return (
-                          <div className="p-2 bg-red-950/20 border border-red-900/40 text-red-400 rounded text-[9px] font-sans leading-normal">
+                          <div className={`p-2 rounded text-[9px] font-sans leading-normal border ${isDark ? 'bg-red-955/20 border-red-900/40 text-red-400' : 'bg-red-50 border-red-200 text-red-750'}`}>
                             <strong>⚠️ Violação de Regulamento:</strong>
                             <ul className="list-disc pl-3 mt-1 space-y-0.5">
                               {warnings.map((w, index) => <li key={index}>{w}</li>)}
@@ -1453,7 +1475,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                         );
                       } else if (scWeight > 0 || scLength > 0 || scWidth > 0) {
                         return (
-                          <div className="p-2 bg-emerald-950/20 border border-emerald-900/40 text-emerald-400 rounded text-[9px] font-sans leading-normal">
+                          <div className={`p-2 rounded text-[9px] font-sans leading-normal border ${isDark ? 'bg-emerald-955/20 border-emerald-900/40 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-750'}`}>
                             <strong>✔️ Conformidade Aprovada:</strong> Dimensões dentro dos limites técnicos da temporada!
                           </div>
                         );
@@ -1472,10 +1494,10 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
               </div>
 
               {/* ACTION IMMUTABILITY AUDIT LOG TABLE */}
-              <div className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg space-y-4">
-                <div className="flex items-center justify-between border-b border-stone-850 pb-3">
+              <div className={`lg:col-span-8 ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border p-5 rounded-lg space-y-4`}>
+                <div className={`flex items-center justify-between border-b ${isDark ? 'border-stone-850' : 'border-stone-200'} pb-3`}>
                   <div>
-                    <h3 className="text-xs font-bold font-mono uppercase text-[#e5e5e5] flex items-center gap-1.5">
+                    <h3 className={`text-xs font-bold font-mono uppercase ${isDark ? 'text-[#e5e5e5]' : 'text-stone-900'} flex items-center gap-1.5`}>
                       <Layers className="w-4 h-4 text-red-500" /> Registro Auditável de Escopo (Cadastro Imutável)
                     </h3>
                     <p className="text-[10px] text-stone-450 mt-0.5">As mudanças com veto REJEITADO permanecem exclusivamente salvaguardadas como prova de auditoria.</p>
@@ -1483,9 +1505,9 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                 </div>
 
                 <div className="overflow-x-auto select-text">
-                  <table className="w-full text-left text-xs text-stone-300 font-sans">
+                  <table className={`w-full text-left text-xs ${isDark ? 'text-stone-300' : 'text-stone-800'} font-sans`}>
                     <thead>
-                      <tr className="border-b border-stone-850 text-stone-400 font-mono text-[10px] uppercase">
+                      <tr className={`border-b ${isDark ? 'border-stone-850 text-stone-400' : 'border-stone-200 text-stone-600'} font-mono text-[10px] uppercase`}>
                         <th className="py-2.5 px-3">Título / Descrição</th>
                         <th className="py-2.5 px-3">Desvios Estimados</th>
                         <th className="py-2.5 px-3">Solicitado por</th>
@@ -1496,20 +1518,20 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       {scopeChanges.length === 0 ? (
                         <tr>
                           <td colSpan={4} className="p-8">
-                            <div className="text-center py-8 px-4 bg-stone-955/20 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 font-mono w-full">
+                            <div className={`text-center py-8 px-4 ${isDark ? 'bg-stone-955/20 border-stone-800 text-stone-300' : 'bg-stone-50 border-stone-200 text-stone-600'} border border-dashed rounded flex flex-col items-center justify-center space-y-2 font-mono w-full`}>
                               <Inbox className="w-8 h-8 text-stone-700/60" />
-                              <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Registro de Escopo</p>
+                              <p className="text-xs font-bold uppercase tracking-wider">Nenhum Registro de Escopo</p>
                               <p className="text-[10px] text-stone-500 max-w-xs">Nenhuma mudança de escopo foi submetida até o momento para o bólido.</p>
                             </div>
                           </td>
                         </tr>
                       ) : (
                         scopeChanges.map((change) => {
-                          const stateColor = change.decision === 'approved' ? 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60' : change.decision === 'rejected' ? 'text-red-500 bg-red-952/20 border-red-900/60' : 'text-stone-400 bg-stone-955 border-stone-800';
+                          const stateColor = change.decision === 'approved' ? 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60' : change.decision === 'rejected' ? 'text-red-505 bg-red-955/20 border-red-900/60' : 'text-stone-400 bg-stone-955 border-stone-800';
                           return (
-                            <tr key={change.id} className="border-b border-stone-850 hover:bg-stone-955 transition-colors">
+                            <tr key={change.id} className={`border-b ${isDark ? 'border-stone-850 hover:bg-stone-955' : 'border-stone-200 hover:bg-stone-50/50'} transition-colors`}>
                               <td className="py-3 px-3 max-w-xs">
-                                <div className="font-bold text-white tracking-tight leading-relaxed">{change.title}</div>
+                                <div className={`font-bold ${isDark ? 'text-white' : 'text-stone-900'} tracking-tight leading-relaxed`}>{change.title}</div>
                                 {change.description && <div className="text-[10px] text-stone-450 mt-1">{change.description}</div>}
                               </td>
 
@@ -1551,8 +1573,8 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                   </table>
                 </div>
 
-                <div className="p-3 bg-stone-955 border border-stone-850 rounded text-stone-500 flex items-center justify-between text-[11px] font-mono select-none">
-                  <div className="flex items-center gap-1.5 text-stone-400 font-extrabold uppercase text-[9px]">
+                <div className={`p-3 ${isDark ? 'bg-stone-955 border-stone-850 text-stone-500' : 'bg-stone-50 border-stone-200 text-stone-605'} rounded border flex items-center justify-between text-[11px] font-mono select-none`}>
+                  <div className={`flex items-center gap-1.5 ${isDark ? 'text-stone-400' : 'text-stone-600'} font-extrabold uppercase text-[9px]`}>
                     <ShieldCheck className="w-4 h-4 text-stone-400" /> CONTROLE LEGAL DE INTEGRIDADE:
                   </div>
                   <span>Garantia de auditoria estrita • Norma de conformidade F1 2026</span>
@@ -1570,13 +1592,13 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
       {/* COMPACT MODAL POPUP FOR ADDING RISKS */}
       {showAddRisk && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/70 backdrop-blur-sm p-4 animate-fade-in select-text">
-          <div className="bg-[#121212] border border-stone-800 w-full max-w-sm rounded-lg overflow-hidden shadow-2xl">
-            <div className="bg-stone-900 p-4 border-b border-stone-800 flex justify-between items-center select-none">
+          <div className={`${isDark ? 'bg-[#121212] border-stone-800' : 'bg-white border-stone-200'} border w-full max-w-sm rounded-lg overflow-hidden shadow-2xl`}>
+            <div className={`${isDark ? 'bg-stone-900 border-stone-800' : 'bg-stone-50 border-stone-200'} p-4 border-b flex justify-between items-center select-none`}>
               <h3 className="text-xs font-bold text-red-500 uppercase font-mono flex items-center gap-1.5">
                 <ShieldAlert className="w-4 h-4 text-red-500" />
                 Registrar Novo Risco
               </h3>
-              <button onClick={() => setShowAddRisk(false)} className="text-stone-400 hover:text-white font-bold cursor-pointer">✕</button>
+              <button onClick={() => setShowAddRisk(false)} className={`text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'} font-bold cursor-pointer`}>✕</button>
             </div>
 
             <form onSubmit={handleCreateRisk} className="p-4 space-y-4 text-xs font-sans">
@@ -1595,7 +1617,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
 
               <div>
                 <label htmlFor="risk-area-select" className="mach-label">Área Envolvida</label>
-                <select id="risk-area-select" value={riskArea} onChange={e => setRiskArea(e.target.value)} className="mach-input select-none text-white bg-stone-950">
+                <select id="risk-area-select" value={riskArea} onChange={e => setRiskArea(e.target.value)} className="mach-input select-none">
                   <option value="Técnico">Técnico (Engenharia / Solda / CNC)</option>
                   <option value="Financeiro">Financeiro (Orçamento / Patrocínio)</option>
                   <option value="Aquisições">Aquisições (Logística / Fornecedores)</option>
