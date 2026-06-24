@@ -178,6 +178,19 @@ A diretora Cláudia confirmou a liberação da verba de compras de fibra de carb
   ];
 };
 
+// Role translating
+const translateRole = (role: string) => {
+  const map: Record<string, string> = {
+    sponsor: 'Patrocinador (Sponsor)',
+    mentor: 'Orientador / Mentor Acadêmico',
+    judge: 'Conselheiro / Juiz de Projeto',
+    school: 'Representante Universitário',
+    collaborator: 'Organização Interna',
+    follower: 'Comunidade / Apoiadores'
+  };
+  return map[role] || role;
+};
+
 export default function Stakeholders({ activeProject, activeUser, permissions, config }: StakeholdersProps) {
   const isDark = config?.theme === 'dark';
   // Active internal sub-views on Stakeholders: 'map' | 'comm_matrix' | 'comms_log'
@@ -729,43 +742,42 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
     });
   }, [logs, logSearch, stakeholders]);
 
-  // Role translating
-  const translateRole = (role: string) => {
-    const map: Record<string, string> = {
-      sponsor: 'Patrocinador (Sponsor)',
-      mentor: 'Orientador / Mentor Acadêmico',
-      judge: 'Conselheiro / Juiz de Projeto',
-      school: 'Representante Universitário',
-      collaborator: 'Organização Interna',
-      follower: 'Comunidade / Apoiadores'
-    };
-    return map[role] || role;
-  };
-
   return (
     <div className="space-y-6" id="stakeholder-module-unified">
       
       {/* 1. SECTION HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-stone-850 pb-5">
+      <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-5 ${
+        isDark ? 'border-stone-850' : 'border-stone-200'
+      }`}>
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1 px-2.5 rounded text-[10px] font-mono tracking-wider font-black uppercase text-red-500 bg-red-950/20 border border-red-900/60 flex items-center gap-1.5 animate-pulse">
+            <span className={`p-1 px-2.5 rounded text-[10px] font-mono tracking-wider font-black uppercase flex items-center gap-1.5 animate-pulse border ${
+              isDark 
+                ? 'text-red-505 bg-red-950/20 border-red-900/60' 
+                : 'text-red-600 bg-red-50/50 border-red-200'
+            }`}>
               ● FASE 1
             </span>
           </div>
-          <h2 className="text-xl font-display font-black tracking-wider uppercase text-white mt-1.5 flex items-center gap-2">
+          <h2 className={`text-xl font-display font-black tracking-wider uppercase mt-1.5 flex items-center gap-2 ${
+            isDark ? 'text-white' : 'text-stone-900'
+          }`}>
             <Users className="w-5 text-red-500" />
             Engajamento & Matriz de Comunicações
           </h2>
         </div>
 
         {/* TOP LEVEL NAVIGATION TABS */}
-        <div className="flex bg-stone-950 p-1 border border-stone-850 rounded text-xs select-none">
+        <div className={`flex p-1 border rounded text-xs select-none ${
+          isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-100 border-stone-250 shadow-sm'
+        }`}>
           {enabledTabs.includes('map') && (
             <button 
               onClick={() => setSubTab('map')}
               className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                subTab === 'map' ? 'bg-red-655 text-white font-bold bg-[#DC2626]' : 'text-stone-400 hover:text-white'
+                subTab === 'map' 
+                  ? 'bg-[#DC2626] text-white font-bold' 
+                  : `text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
               }`}
             >
               Mapeamento & Mendelow
@@ -775,7 +787,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
             <button 
               onClick={() => setSubTab('comm_matrix')}
               className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                subTab === 'comm_matrix' ? 'bg-red-655 text-white font-bold bg-[#DC2626]' : 'text-stone-400 hover:text-white'
+                subTab === 'comm_matrix' 
+                  ? 'bg-[#DC2626] text-white font-bold' 
+                  : `text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
               }`}
             >
               Matriz de Comunicações
@@ -785,7 +799,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
             <button 
               onClick={() => setSubTab('comms_log')}
               className={`px-3 py-1.5 rounded font-bold uppercase tracking-wider transition-colors cursor-pointer ${
-                subTab === 'comms_log' ? 'bg-red-655 text-white font-bold bg-[#DC2626]' : 'text-stone-400 hover:text-white'
+                subTab === 'comms_log' 
+                  ? 'bg-[#DC2626] text-white font-bold' 
+                  : `text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
               }`}
             >
               Atas & Atividades (Logs)
@@ -831,7 +847,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
           {/* LEFT COLUMN: LIST FILTER & FORMS */}
           <div className="lg:col-span-4 space-y-4">
             
-            <div className="bg-stone-900 border border-stone-850 p-4 rounded space-y-4">
+            <div className={`p-4 rounded space-y-4 border ${
+              isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+            }`}>
               <div className="flex justify-between items-center select-none text-xs">
                 <span className="font-mono font-black text-rose-500 uppercase tracking-widest flex items-center gap-1">
                   <Sliders className="w-3.5" /> Stakeholders ({filteredStakeholdersList.length})
@@ -853,7 +871,12 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                       }));
                       exportToExcel(excelData, `Stakeholders_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, 'Stakeholders');
                     }}
-                    className="bg-emerald-955/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900 font-extrabold uppercase py-1 px-2.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                    className={`font-extrabold uppercase py-1 px-2.5 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer border ${
+                      isDark 
+                        ? 'bg-emerald-955/40 hover:bg-emerald-900/50 text-emerald-400 border-emerald-900' 
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                    }`}
+                    style={!isDark ? { color: '#ffffff' } : undefined}
                     title="Exportar Stakeholders para Excel"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -864,7 +887,11 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                       resetStkForm();
                       setShowAddStkForm(!showAddStkForm);
                     }}
-                    className="bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white border border-red-900 hover:border-red-600 text-[10px] font-sans font-bold px-2 py-1 rounded transition-all cursor-pointer flex items-center gap-1"
+                    className={`text-[10px] font-sans font-bold px-2 py-1 rounded transition-all cursor-pointer flex items-center gap-1 border ${
+                      isDark 
+                        ? 'bg-red-600/10 hover:bg-red-600 text-red-505 hover:text-white border-red-900 hover:border-red-650' 
+                        : 'bg-red-50 hover:bg-red-600 text-[#DC2626] hover:text-white border-red-200 hover:border-red-600 shadow-sm'
+                    }`}
                   >
                     {showAddStkForm ? 'Fechar Form' : '+ Cadastrar'}
                   </button>
@@ -878,7 +905,11 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                     <Search className="w-3.5 h-3.5 text-stone-500 absolute left-2.5 top-2.5" />
                     <input 
                       type="text"
-                      className="w-full bg-stone-950 border border-stone-800 text-[11px] rounded p-2 pl-8 font-sans placeholder-stone-600 text-white focus:outline-none focus:border-red-600"
+                      className={`w-full text-[11px] rounded p-2 pl-8 font-sans focus:outline-none focus:border-red-655 border ${
+                        isDark 
+                          ? 'bg-stone-950 border-stone-800 text-white placeholder-stone-600' 
+                          : 'bg-stone-50 border-stone-250 text-stone-900 placeholder-stone-400'
+                      }`}
                       placeholder="Pesquisar por nome ou organização..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
@@ -887,7 +918,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
 
                   <div className="grid grid-cols-2 gap-1 text-[9px] font-mono select-none">
                     <select
-                      className="bg-stone-950 border border-stone-800 rounded p-1.5 text-stone-300"
+                      className={`border rounded p-1.5 text-xs font-sans cursor-pointer focus:outline-none focus:border-red-655 ${
+                        isDark ? 'bg-stone-950 border-stone-800 text-stone-300' : 'bg-stone-50 border-stone-250 text-stone-900'
+                      }`}
                       value={selectedRoleFilter}
                       onChange={e => setSelectedRoleFilter(e.target.value)}
                     >
@@ -900,7 +933,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                     </select>
 
                     <select
-                      className="bg-stone-950 border border-stone-800 rounded p-1.5 text-stone-300"
+                      className={`border rounded p-1.5 text-xs font-sans cursor-pointer focus:outline-none focus:border-red-655 ${
+                        isDark ? 'bg-stone-950 border-stone-800 text-stone-300' : 'bg-stone-50 border-stone-250 text-stone-900'
+                      }`}
                       value={selectedQuadrantFilter || 'all'}
                       onChange={e => setSelectedQuadrantFilter(e.target.value === 'all' ? null : e.target.value)}
                     >
@@ -1002,7 +1037,7 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                         min="1"
                         max="5"
                         step="1"
-                        className="w-full accent-red-600 cursor-ew-resize bg-stone-800 rounded-lg"
+                        className={`w-full accent-red-600 cursor-ew-resize rounded-lg ${isDark ? 'bg-stone-800' : 'bg-stone-200'}`}
                         value={stkPower}
                         onChange={e => setStkPower(Number(e.target.value))}
                       />
@@ -1020,7 +1055,7 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                         min="1"
                         max="5"
                         step="1"
-                        className="w-full accent-red-600 cursor-ew-resize bg-stone-800 rounded-lg"
+                        className={`w-full accent-red-600 cursor-ew-resize rounded-lg ${isDark ? 'bg-stone-800' : 'bg-stone-200'}`}
                         value={stkInterest}
                         onChange={e => setStkInterest(Number(e.target.value))}
                       />
@@ -1128,19 +1163,19 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
               <ul className="space-y-2 font-mono text-[10.5px]">
                 <li className="flex justify-between border-b border-stone-950 pb-1">
                   <span className="text-rose-450 font-bold flex items-center gap-1">🔴 Manage Closely (Key Players)</span>
-                  <span className="font-black text-white">{mendelowCounts.key_players}</span>
+                  <span className={`font-black ${isDark ? 'text-white' : 'text-stone-900'}`}>{mendelowCounts.key_players}</span>
                 </li>
                 <li className="flex justify-between border-b border-stone-950 pb-1">
                   <span className="text-orange-400 font-bold flex items-center gap-1">🟠 Keep Satisfied (Satisfeitos)</span>
-                  <span className="font-black text-white">{mendelowCounts.keep_satisfied}</span>
+                  <span className={`font-black ${isDark ? 'text-white' : 'text-stone-900'}`}>{mendelowCounts.keep_satisfied}</span>
                 </li>
                 <li className="flex justify-between border-b border-stone-950 pb-1">
                   <span className="text-sky-400 font-bold flex items-center gap-1">🔵 Keep Informed (Informados)</span>
-                  <span className="font-black text-white">{mendelowCounts.keep_informed}</span>
+                  <span className={`font-black ${isDark ? 'text-white' : 'text-stone-900'}`}>{mendelowCounts.keep_informed}</span>
                 </li>
                 <li className="flex justify-between border-b border-stone-950 pb-1">
                   <span className="text-stone-500 font-bold flex items-center gap-1">⚪ Monitorar (Monitor Only)</span>
-                  <span className="font-black text-white">{mendelowCounts.monitor}</span>
+                  <span className={`font-black ${isDark ? 'text-white' : 'text-stone-900'}`}>{mendelowCounts.monitor}</span>
                 </li>
               </ul>
             </div>
@@ -1223,7 +1258,7 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                   <ScatterChart
                     margin={{ top: 20, right: 30, bottom: 20, left: 10 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#222' : '#e7e5e4'} />
                     {/* Domain is set from 0.5 to 5.5 to center the numbers 1,2,3,4,5 nicely */}
                     <XAxis 
                       type="number" 
@@ -1231,9 +1266,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                       name="Interesse" 
                       domain={[0.5, 5.5]} 
                       ticks={[1, 2, 3, 4, 5]} 
-                      stroke="#444"
-                      tick={{ fill: '#888', fontSize: 10, fontFamily: 'monospace' }}
-                      label={{ value: 'GRAU DE INTERESSE (1 a 5) ►', position: 'bottom', fill: '#666', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold' }}
+                      stroke={isDark ? '#444' : '#d6d3d1'}
+                      tick={{ fill: isDark ? '#888' : '#57534e', fontSize: 10, fontFamily: 'monospace' }}
+                      label={{ value: 'GRAU DE INTERESSE (1 a 5) ►', position: 'bottom', fill: isDark ? '#666' : '#78716c', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold' }}
                     />
                     <YAxis 
                       type="number" 
@@ -1241,25 +1276,26 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                       name="Poder" 
                       domain={[0.5, 5.5]} 
                       ticks={[1, 2, 3, 4, 5]} 
-                      stroke="#444"
-                      tick={{ fill: '#888', fontSize: 10, fontFamily: 'monospace' }}
-                      label={{ value: 'GRAU DE PODER (1 a 5) ▲', angle: -90, position: 'left', fill: '#666', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold', offset: 0 }}
+                      stroke={isDark ? '#444' : '#d6d3d1'}
+                      tick={{ fill: isDark ? '#888' : '#57534e', fontSize: 10, fontFamily: 'monospace' }}
+                      label={{ value: 'GRAU DE PODER (1 a 5) ▲', angle: -90, position: 'left', fill: isDark ? '#666' : '#78716c', fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold', offset: 0 }}
                     />
-                    <ZAxis type="number" range={[150, 160]} />
-                    
-                    {/* Hover text formatting */}
-                    <Tooltip 
-                      cursor={{ strokeDasharray: '3 3', stroke: '#444' }} 
+                              <Tooltip 
+                      cursor={{ strokeDasharray: '3 3', stroke: isDark ? '#444' : '#ccc' }} 
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const item = payload[0].payload;
                           return (
-                            <div className="bg-stone-900 border border-stone-850 p-2.5 rounded shadow text-[10.5px] font-sans space-y-1 select-text">
-                              <p className="font-extrabold text-white text-xs">{item.name}</p>
+                            <div className={`p-2.5 rounded shadow text-[10.5px] font-sans space-y-1 select-text border ${
+                              isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-lg'
+                            }`}>
+                              <p className={`font-extrabold text-xs ${isDark ? 'text-white' : 'text-stone-900'}`}>{item.name}</p>
                               <p className="text-rose-450 font-medium font-mono text-[9px] uppercase">{item.role}</p>
-                              <div className="border-t border-stone-800 pt-1 mt-1 font-mono text-[8.5px] text-stone-400 space-y-0.5">
-                                <p>Poder: <span className="text-white font-bold">{item.y}</span> | Interesse: <span className="text-white font-bold">{item.x}</span></p>
-                                <p>Classificação: <span className="text-emerald-500 font-bold uppercase">{item.quad.replace('_', ' ')}</span></p>
+                              <div className={`border-t pt-1 mt-1 font-mono text-[8.5px] space-y-0.5 ${
+                                isDark ? 'border-stone-800 text-stone-400' : 'border-stone-150 text-stone-600'
+                              }`}>
+                                <p>Poder: <span className={`font-bold ${isDark ? 'text-white' : 'text-stone-900'}`}>{item.y}</span> | Interesse: <span className={`font-bold ${isDark ? 'text-white' : 'text-stone-900'}`}>{item.x}</span></p>
+                                <p>Classificação: <span className={`font-bold uppercase ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.quad.replace('_', ' ')}</span></p>
                               </div>
                             </div>
                           );
@@ -1269,8 +1305,8 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                     />
 
                     {/* Dividing Mendelow grid lines at point index 3 */}
-                    <ReferenceLine x={3} stroke="#DC2626" strokeDasharray="5 5" strokeWidth={1} label={{ value: 'Grau Médio', fill: '#444', fontSize: 8, position: 'top' }} />
-                    <ReferenceLine y={3} stroke="#DC2626" strokeDasharray="5 5" strokeWidth={1} label={{ value: 'Grau Médio', fill: '#444', fontSize: 8, position: 'right' }} />
+                    <ReferenceLine x={3} stroke="#DC2626" strokeDasharray="5 5" strokeWidth={1} label={{ value: 'Grau Médio', fill: isDark ? '#888' : '#57534e', fontSize: 8, position: 'top' }} />
+                    <ReferenceLine y={3} stroke="#DC2626" strokeDasharray="5 5" strokeWidth={1} label={{ value: 'Grau Médio', fill: isDark ? '#888' : '#57534e', fontSize: 8, position: 'right' }} />
 
                     <Scatter 
                       name="Stakeholders" 
@@ -1602,7 +1638,11 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                     <Search className="w-3.5 h-3.5 text-stone-500 absolute left-2.5 top-2.5" />
                     <input 
                       type="text"
-                      className="w-full bg-stone-950 border border-stone-800 text-[11px] rounded p-2 pl-8 font-sans placeholder-stone-600 text-white focus:outline-none focus:border-red-600"
+                      className={`w-full text-[11px] rounded p-2 pl-8 font-sans focus:outline-none focus:border-red-600 border ${
+                        isDark 
+                          ? 'bg-stone-950 border-stone-800 text-white placeholder-stone-600' 
+                          : 'bg-stone-50 border-stone-250 text-stone-900 placeholder-stone-400'
+                      }`}
                       placeholder="Pesquise o texto do resumo, pontos ou tags..."
                       value={logSearch}
                       onChange={e => setLogSearch(e.target.value)}
@@ -1762,7 +1802,9 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
           <div className="lg:col-span-7 space-y-4">
             
             <div className="flex justify-between items-center select-none">
-              <span className="font-mono text-[10px] uppercase font-black tracking-widest text-white flex items-center gap-1.5">
+              <span className={`font-mono text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 ${
+                isDark ? 'text-white' : 'text-stone-900'
+              }`}>
                 <ChevronRight className="w-4 h-4 text-[#DC2626]" /> 
                 Feed Histórico de Alinhamentos ({filteredLogsList.length})
               </span>
