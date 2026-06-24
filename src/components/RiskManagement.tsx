@@ -681,7 +681,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
         <div>
           <h1 className={`text-lg font-display font-black ${isDark ? 'text-white' : 'text-stone-900'} uppercase tracking-wider flex items-center gap-2 mt-1`}>
             <ShieldAlert className="w-5.5 h-5.5 text-red-500" />
-            Riscos e Monitoramento Sistemático
+            Gestão de Riscos
           </h1>
         </div>
         {setIsFullscreen && (

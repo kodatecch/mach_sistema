@@ -829,11 +829,6 @@ export default function Finance({ activeProject, activeUser, memberships, users,
         isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'
       }`}>
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className={`font-mono text-[10px] ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
-              ID: {activeProject.id}
-            </span>
-          </div>
           <h1 className={`text-2xl font-display font-black uppercase tracking-wide ${isDark ? 'text-white' : 'text-stone-900'}`}>
             Orçamento & Controle Monetário
           </h1>
