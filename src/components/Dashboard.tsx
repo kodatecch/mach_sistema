@@ -14,7 +14,9 @@ import {
   Layers,
   ChevronRight,
   Sliders,
-  Calendar
+  Calendar,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -39,9 +41,11 @@ interface DashboardProps {
   risks: Risk[];
   currentDate: string;
   setCurrentDate?: (date: string) => void;
+  isFullscreen?: boolean;
+  setIsFullscreen?: (val: boolean) => void;
 }
 
-export default function Dashboard({ tasks, transactions, risks, currentDate, setCurrentDate }: DashboardProps) {
+export default function Dashboard({ tasks, transactions, risks, currentDate, setCurrentDate, isFullscreen, setIsFullscreen }: DashboardProps) {
   const [selectedSeason, setSelectedSeason] = useState<'comparativo' | 'mach2' | 'mach1'>('comparativo');
   const [showTimelineSlider, setShowTimelineSlider] = useState(false);
   const [hoveredWheelParam, setHoveredWheelParam] = useState<string | null>(null);
@@ -304,6 +308,16 @@ export default function Dashboard({ tasks, transactions, risks, currentDate, set
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto shrink-0">
+          {setIsFullscreen && (
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-2 border rounded-lg hover:bg-stone-100 dark:hover:bg-stone-805 transition-colors cursor-pointer text-stone-505 hover:text-stone-909 dark:text-stone-400 dark:hover:text-white flex items-center justify-center bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-sm"
+              title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          )}
+
           {setCurrentDate && (
             <div className="flex items-center gap-2">
               <input 

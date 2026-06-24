@@ -26,10 +26,11 @@ import {
   Clock,
   User,
   Star,
-  ExternalLink
+  ExternalLink,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { Risk, ScopeChangeLog, StatusReport, Project, User as ProjectUser, OrgConfig } from '../types';
-import EvmDashboard from './EvmDashboard';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportToExcel } from '../utils/excelExport';
 
@@ -38,6 +39,8 @@ interface RiskManagementProps {
   activeUser: ProjectUser;
   permissions?: any;
   config?: OrgConfig;
+  isFullscreen?: boolean;
+  setIsFullscreen?: (val: boolean) => void;
 }
 
 const DEFAULT_RISKS = (projectId: string): Risk[] => [
@@ -149,7 +152,7 @@ const DEFAULT_SCOPE_CHANGES = (projectId: string): ScopeChangeLog[] => [
   }
 ];
 
-export default function RiskManagement({ activeProject, activeUser, permissions, config }: RiskManagementProps) {
+export default function RiskManagement({ activeProject, activeUser, permissions, config, isFullscreen, setIsFullscreen }: RiskManagementProps) {
   const isDark = config?.theme === 'dark';
   const [isLoading, setIsLoading] = useState(true);
 
@@ -162,15 +165,14 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
 
   // Navigation: Sub-tabs within Risks e Monitoramento
   const enabledTabs = useMemo(() => {
-    const tabs: ('riscos' | 'relatorios' | 'escopo' | 'evm')[] = [];
+    const tabs: ('riscos' | 'relatorios' | 'escopo')[] = [];
     if (config?.enableRisksList !== false) tabs.push('riscos');
     if (config?.enableRisksReports !== false) tabs.push('relatorios');
     if (config?.enableRisksScope !== false) tabs.push('escopo');
-    if (config?.enableRisksEvm !== false) tabs.push('evm');
     return tabs;
   }, [config]);
 
-  const [subTab, setSubTab] = useState<'riscos' | 'relatorios' | 'escopo' | 'evm'>(() => {
+  const [subTab, setSubTab] = useState<'riscos' | 'relatorios' | 'escopo'>(() => {
     return enabledTabs[0] || 'riscos';
   });
 
@@ -682,6 +684,15 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
             Riscos e Monitoramento Sistemático
           </h1>
         </div>
+        {setIsFullscreen && (
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-2 border rounded-lg hover:bg-stone-100 dark:hover:bg-stone-805 transition-colors cursor-pointer text-stone-505 hover:text-stone-909 dark:text-stone-400 dark:hover:text-white flex items-center justify-center bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-sm shrink-0"
+            title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        )}
       </div>
 
       {/* DASHBOARD LEVEL LEVEL SUB NAVIGATION */}
@@ -728,19 +739,6 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
           </button>
         )}
 
-        {enabledTabs.includes('evm') && (
-          <button 
-            onClick={() => setSubTab('evm')}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 font-mono shrink-0 transition-colors cursor-pointer ${
-              subTab === 'evm' 
-                ? 'border-red-505 text-red-650' 
-                : `border-transparent text-stone-400 ${isDark ? 'hover:text-white' : 'hover:text-stone-900'}`
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            Análise EVM / Valor Agregado
-          </button>
-        )}
       </div>
 
       {/* SUGGESTION MODAL IF ACTIONABLE THRESHOLD TRIGGERS */}
@@ -790,18 +788,20 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                   </div>
 
                   {/* CHANGER SWITCH THREATS VS OPPORTUNITIES */}
-                  <div className={`flex border ${isDark ? 'border-stone-800 bg-stone-950' : 'border-stone-200 bg-stone-100'} rounded p-0.5 text-[9px] font-mono leading-none`}>
+                  <div className={`flex border ${isDark ? 'border-stone-800 bg-stone-955' : 'border-stone-200 bg-stone-100'} rounded p-0.5 text-[9px] font-mono leading-none`}>
                     <button 
                       type="button"
                       onClick={() => { setHeatmapCategory('threat'); setSelectedCell(null); }}
-                      className={`px-3 py-1.5 font-bold uppercase rounded ${heatmapCategory === 'threat' ? 'bg-[#991b1b] text-white' : 'text-stone-400'}`}
+                      className={`px-3 py-1.5 font-bold uppercase rounded ${heatmapCategory === 'threat' ? 'bg-[#991b1b] text-white !text-white' : 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-200'}`}
+                      style={heatmapCategory === 'threat' ? { color: '#ffffff' } : undefined}
                     >
                       Ameaças (Threats)
                     </button>
                     <button 
                       type="button"
                       onClick={() => { setHeatmapCategory('opportunity'); setSelectedCell(null); }}
-                      className={`px-3 py-1.5 font-bold uppercase rounded ${heatmapCategory === 'opportunity' ? 'bg-[#15803d] text-white' : 'text-stone-400'}`}
+                      className={`px-3 py-1.5 font-bold uppercase rounded ${heatmapCategory === 'opportunity' ? 'bg-[#15803d] text-white !text-white' : 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-200'}`}
+                      style={heatmapCategory === 'opportunity' ? { color: '#ffffff' } : undefined}
                     >
                       Oportunidades (Opps)
                     </button>
@@ -888,6 +888,7 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                   <button 
                     onClick={() => setShowAddRisk(true)}
                     className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded text-xs uppercase font-bold font-mono tracking-wider transition-colors cursor-pointer text-center"
+                    style={{ color: '#ffffff' }}
                   >
                     + Qualificar Novo Risco
                   </button>
@@ -923,7 +924,12 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       }));
                       exportToExcel(excelData, `Matriz_De_Riscos_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, 'Matriz de Riscos');
                     }}
-                    className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900 font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                    className={`font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer border ${
+                      isDark
+                        ? 'bg-emerald-955/40 hover:bg-emerald-900/50 text-emerald-400 border-emerald-900'
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                    }`}
+                    style={!isDark ? { color: '#ffffff' } : undefined}
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5" />
                     Exportar Excel
@@ -1013,18 +1019,34 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
                       </tr>
                     ) : (
                       processedRisks.map((risk) => {
-                        const scoreColor = risk.riskScore >= 15 ? 'text-red-500 bg-red-950/20 border-red-900/60' : risk.riskScore >= 9 ? 'text-amber-500 bg-amber-950/20 border-amber-900/60' : 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60';
+                        const scoreColor = isDark
+                          ? (risk.riskScore >= 15
+                              ? 'text-red-500 bg-red-950/20 border-red-900/60'
+                              : risk.riskScore >= 9
+                              ? 'text-amber-500 bg-amber-950/20 border-amber-900/60'
+                              : 'text-emerald-500 bg-emerald-950/20 border-emerald-900/60')
+                          : (risk.riskScore >= 15
+                              ? 'text-red-800 bg-red-50 border-red-200'
+                              : risk.riskScore >= 9
+                              ? 'text-amber-800 bg-amber-50 border-amber-200'
+                              : 'text-emerald-800 bg-emerald-50 border-emerald-200');
                         return (
                           <tr key={risk.id} className={`border-b ${isDark ? 'border-stone-850 hover:bg-stone-955' : 'border-stone-200 hover:bg-stone-50/50'} transition-colors`}>
                             <td className="py-3 px-3 max-w-sm">
                               <div className="flex items-center gap-1.5 mb-1 select-none">
                                 <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono leading-none font-bold uppercase border ${
-                                  risk.category === 'threat' ? 'bg-red-955/40 border-red-905 text-red-400' : 'bg-emerald-955/40 border-emerald-900 text-emerald-400'
+                                  isDark
+                                    ? (risk.category === 'threat' ? 'bg-red-955/40 border-red-905 text-red-400' : 'bg-emerald-955/40 border-emerald-900 text-emerald-400')
+                                    : (risk.category === 'threat' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700')
                                 }`}>
                                   {risk.category === 'threat' ? 'Ameaça' : 'Oportunidade'}
                                 </span>
                                 {risk.status === 'watch_list' && (
-                                  <span className="bg-[#78350f]/30 border border-amber-900 text-amber-500 px-1.5 py-0.5 font-mono text-[8px] rounded uppercase font-extrabold flex items-center gap-0.5">
+                                  <span className={`px-1.5 py-0.5 font-mono text-[8px] rounded uppercase font-extrabold flex items-center gap-0.5 border ${
+                                    isDark
+                                      ? 'bg-[#78350f]/30 border-amber-900 text-amber-500'
+                                      : 'bg-amber-50 border-amber-300 text-amber-800'
+                                  }`}>
                                     <Star className="w-2 h-2 fill-current" /> Watch List
                                   </span>
                                 )}
@@ -1582,10 +1604,6 @@ export default function RiskManagement({ activeProject, activeUser, permissions,
               </div>
             </div>
           </div>
-        )}
-
-        {subTab === 'evm' && (
-          <EvmDashboard activeProject={activeProject} />
         )}
       </div>
 

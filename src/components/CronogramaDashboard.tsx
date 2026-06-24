@@ -32,7 +32,16 @@ import {
   ArrowRight,
   Sliders,
   FileText,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Pen,
+  Eraser,
+  MousePointer,
+  Square,
+  Circle as LucideCircle,
+  StickyNote,
+  Scroll,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportToExcel } from '../utils/excelExport';
@@ -72,12 +81,7 @@ function isTaskPending(task: Task): boolean {
 
 function shouldShowPendingWarning(task: Task, config?: OrgConfig, currentDate?: string): boolean {
   if (config?.enablePendingWarnings === false) return false;
-  if (!isTaskPending(task)) return false;
-  if (task.status === 'done' && task.completedDate && currentDate) {
-    const diff = calculateDaysDifference(currentDate, task.completedDate);
-    if (diff >= 2) return false;
-  }
-  return true;
+  return isTaskPending(task);
 }
 
 export type CanvasShape = 'rectangle' | 'diamond' | 'rounded-rectangle' | 'circle';
@@ -169,6 +173,8 @@ interface CronogramaDashboardProps {
   permissions?: any;
   config?: OrgConfig;
   currentDate?: string;
+  isFullscreen?: boolean;
+  setIsFullscreen?: (val: boolean) => void;
 }
 
 // -----------------------------------------------------------------
@@ -578,7 +584,7 @@ function getFlowElements(tasksList: any[], depsList: any[], annotationsList: any
   return { nodes, edges };
 }
 
-export default function CronogramaDashboard({ activeProject, activeUser, memberships, users, permissions, config, currentDate = '2026-06-20' }: CronogramaDashboardProps) {
+export default function CronogramaDashboard({ activeProject, activeUser, memberships, users, permissions, config, currentDate = '2026-06-20', isFullscreen, setIsFullscreen }: CronogramaDashboardProps) {
   const queryClient = useQueryClient();
   const isDark = config?.theme === 'dark';
   const [activeSubTab, setActiveSubTab] = useState<'wbs' | '5w2h' | 'kanban' | 'eisenhower' | 'gantt' | 'flow'>('wbs');
@@ -607,6 +613,393 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
   const [wbsNameInput, setWbsNameInput] = useState('');
   const [wbsDescInput, setWbsDescInput] = useState('');
   const [wbsParentInput, setWbsParentInput] = useState<string>('');
+
+  // Whiteboard States
+  const [canvasViewMode, setCanvasViewMode] = useState<'diagram' | 'whiteboard'>('diagram');
+  const [whiteboardElements, setWhiteboardElements] = useState<{ paths: any[]; shapes: any[] }>(() => {
+    const saved = localStorage.getItem(`mach_whiteboard_${activeProject.id}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return { paths: [], shapes: [] };
+  });
+  const [tool, setTool] = useState<'draw' | 'select' | 'erase'>('draw');
+  const [brushColor, setBrushColor] = useState<string>('#ef4444');
+  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentPath, setCurrentPath] = useState<any>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isErasing, setIsErasing] = useState(false);
+
+  // Sync whiteboard elements on project change
+  React.useEffect(() => {
+    const saved = localStorage.getItem(`mach_whiteboard_${activeProject.id}`);
+    if (saved) {
+      try {
+        setWhiteboardElements(JSON.parse(saved));
+      } catch (e) {
+        setWhiteboardElements({ paths: [], shapes: [] });
+      }
+    } else {
+      setWhiteboardElements({ paths: [], shapes: [] });
+    }
+    setSelectedShapeId(null);
+  }, [activeProject.id]);
+
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+
+  React.useEffect(() => {
+    if (canvasViewMode !== 'whiteboard') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const drawWavyPath = (x: number, y: number, w: number, h: number) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + h - 5);
+      
+      const waveCount = 4;
+      const waveWidth = w / waveCount;
+      for (let i = 0; i < waveCount; i++) {
+        const startX = x + w - i * waveWidth;
+        const endX = x + w - (i + 1) * waveWidth;
+        const cpX = startX - waveWidth / 2;
+        const cpY = y + h + (i % 2 === 0 ? 8 : -8);
+        ctx.quadraticCurveTo(cpX, cpY, endX, y + h);
+      }
+      
+      ctx.lineTo(x, y);
+      ctx.closePath();
+    };
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw Grid
+    ctx.strokeStyle = isDark ? '#292524' : '#e7e5e4';
+    ctx.lineWidth = 0.5;
+    for (let x = 0; x < width; x += 20) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < height; y += 20) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // Draw Paths
+    whiteboardElements.paths.forEach((p: any) => {
+      if (p.points.length < 2) return;
+      ctx.beginPath();
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = p.thickness || 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(p.points[0].x, p.points[0].y);
+      for (let i = 1; i < p.points.length; i++) {
+        ctx.lineTo(p.points[i].x, p.points[i].y);
+      }
+      ctx.stroke();
+    });
+
+    // Draw Temp Path
+    if (currentPath && currentPath.points.length > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle = currentPath.color;
+      ctx.lineWidth = currentPath.thickness || 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.moveTo(currentPath.points[0].x, currentPath.points[0].y);
+      for (let i = 1; i < currentPath.points.length; i++) {
+        ctx.lineTo(currentPath.points[i].x, currentPath.points[i].y);
+      }
+      ctx.stroke();
+    }
+
+    // Draw Shapes
+    whiteboardElements.shapes.forEach((s: any) => {
+      const isSelected = selectedShapeId === s.id;
+      ctx.lineWidth = isSelected ? 3 : 1.5;
+      ctx.strokeStyle = isSelected ? '#3b82f6' : (isDark ? '#57534e' : '#a8a29e');
+
+      if (s.type === 'rectangle') {
+        ctx.fillStyle = s.color || (isDark ? '#44403c' : '#fee2e2');
+        ctx.fillRect(s.x, s.y, s.width, s.height);
+        ctx.strokeRect(s.x, s.y, s.width, s.height);
+
+        ctx.fillStyle = isDark ? '#f5f5f5' : '#1c1917';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.text || '', s.x + s.width / 2, s.y + s.height / 2, s.width - 10);
+      } else if (s.type === 'circle') {
+        ctx.fillStyle = s.color || (isDark ? '#292524' : '#dbeafe');
+        ctx.beginPath();
+        const r = Math.min(s.width, s.height) / 2;
+        ctx.arc(s.x + s.width / 2, s.y + s.height / 2, r, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isDark ? '#f5f5f5' : '#1c1917';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.text || '', s.x + s.width / 2, s.y + s.height / 2, s.width - 10);
+      } else if (s.type === 'sticky') {
+        ctx.fillStyle = s.color || '#fef08a';
+        ctx.fillRect(s.x, s.y, s.width, s.height);
+        ctx.strokeRect(s.x, s.y, s.width, s.height);
+
+        // Sticky text is always black for realism
+        ctx.fillStyle = '#1c1917';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const words = (s.text || '').split(' ');
+        let line = '';
+        let lines = [];
+        for (let i = 0; i < words.length; i++) {
+          let testLine = line + words[i] + ' ';
+          if (ctx.measureText(testLine).width > s.width - 16 && i > 0) {
+            lines.push(line);
+            line = words[i] + ' ';
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+
+        const lineHeight = 14;
+        const startY = s.y + s.height / 2 - ((lines.length - 1) * lineHeight) / 2;
+        lines.forEach((l, index) => {
+          ctx.fillText(l, s.x + s.width / 2, startY + index * lineHeight, s.width - 16);
+        });
+      } else if (s.type === 'wavy') {
+        ctx.fillStyle = s.color || (isDark ? '#44403c' : '#fee2e2');
+        drawWavyPath(s.x, s.y, s.width, s.height);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isDark ? '#f5f5f5' : '#1c1917';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.text || '', s.x + s.width / 2, s.y + s.height / 2, s.width - 10);
+      } else if (s.type === 'stacked') {
+        const offsetStepX = 8;
+        const offsetStepY = 8;
+        for (let i = 2; i >= 0; i--) {
+          const ox = s.x - i * offsetStepX;
+          const oy = s.y - i * offsetStepY;
+          ctx.fillStyle = s.color || (isDark ? '#44403c' : '#fee2e2');
+          drawWavyPath(ox, oy, s.width, s.height);
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = isDark ? '#f5f5f5' : '#1c1917';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.text || '', s.x + s.width / 2, s.y + s.height / 2, s.width - 10);
+      }
+    });
+  }, [whiteboardElements, currentPath, selectedShapeId, canvasViewMode, isDark]);
+
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (tool === 'draw') {
+      setIsDrawing(true);
+      setCurrentPath({
+        id: `path_${Date.now()}`,
+        points: [{ x, y }],
+        color: brushColor,
+        thickness: 2.5
+      });
+      setSelectedShapeId(null);
+    } else if (tool === 'select') {
+      const shapes = [...whiteboardElements.shapes].reverse();
+      const clickedShape = shapes.find(
+        (s: any) => x >= s.x && x <= s.x + s.width && y >= s.y && y <= s.y + s.height
+      );
+      if (clickedShape) {
+        setSelectedShapeId(clickedShape.id);
+        setIsDragging(true);
+        setDragOffset({ x: x - clickedShape.x, y: y - clickedShape.y });
+      } else {
+        setSelectedShapeId(null);
+      }
+    } else if (tool === 'erase') {
+      setIsErasing(true);
+      const remainingShapes = whiteboardElements.shapes.filter(
+        (s: any) => !(x >= s.x && x <= s.x + s.width && y >= s.y && y <= s.y + s.height)
+      );
+
+      const remainingPaths = whiteboardElements.paths.filter((p: any) => {
+        const near = p.points.some(
+          (pt: any) => Math.sqrt((pt.x - x) ** 2 + (pt.y - y) ** 2) < 8
+        );
+        return !near;
+      });
+
+      const updated = { shapes: remainingShapes, paths: remainingPaths };
+      setWhiteboardElements(updated);
+      localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(updated));
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (tool === 'draw' && isDrawing && currentPath) {
+      const lastPt = currentPath.points[currentPath.points.length - 1];
+      if (!lastPt || lastPt.x !== x || lastPt.y !== y) {
+        setCurrentPath({
+          ...currentPath,
+          points: [...currentPath.points, { x, y }]
+        });
+      }
+    } else if (tool === 'select' && isDragging && selectedShapeId) {
+      const updatedShapes = whiteboardElements.shapes.map((s: any) => {
+        if (s.id === selectedShapeId) {
+          const newX = Math.max(0, Math.min(canvas.width - s.width, x - dragOffset.x));
+          const newY = Math.max(0, Math.min(canvas.height - s.height, y - dragOffset.y));
+          return { ...s, x: newX, y: newY };
+        }
+        return s;
+      });
+      const updated = { ...whiteboardElements, shapes: updatedShapes };
+      setWhiteboardElements(updated);
+    } else if (tool === 'erase' && isErasing) {
+      const radius = 15;
+      const remainingShapes = whiteboardElements.shapes.filter((s: any) => {
+        const closestX = Math.max(s.x, Math.min(x, s.x + s.width));
+        const closestY = Math.max(s.y, Math.min(y, s.y + s.height));
+        const distance = Math.sqrt((closestX - x) ** 2 + (closestY - y) ** 2);
+        return distance > radius;
+      });
+
+      const remainingPaths = whiteboardElements.paths.filter((p: any) => {
+        const near = p.points.some(
+          (pt: any) => Math.sqrt((pt.x - x) ** 2 + (pt.y - y) ** 2) < radius
+        );
+        return !near;
+      });
+
+      const updated = { shapes: remainingShapes, paths: remainingPaths };
+      setWhiteboardElements(updated);
+      localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(updated));
+    }
+  };
+
+  const handleCanvasMouseUp = () => {
+    if (tool === 'draw' && isDrawing && currentPath) {
+      const updated = {
+        ...whiteboardElements,
+        paths: [...whiteboardElements.paths, currentPath]
+      };
+      setWhiteboardElements(updated);
+      localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(updated));
+      setCurrentPath(null);
+      setIsDrawing(false);
+    } else if (tool === 'select' && isDragging) {
+      localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(whiteboardElements));
+      setIsDragging(false);
+    } else if (tool === 'erase' && isErasing) {
+      setIsErasing(false);
+    }
+  };
+
+  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const shapes = [...whiteboardElements.shapes].reverse();
+    const clickedShape = shapes.find(
+      (s: any) => x >= s.x && x <= s.x + s.width && y >= s.y && y <= s.y + s.height
+    );
+
+    if (clickedShape) {
+      const newText = prompt('Digite o texto para o bloco:', clickedShape.text);
+      if (newText !== null) {
+        const updatedShapes = whiteboardElements.shapes.map((s: any) => {
+          if (s.id === clickedShape.id) {
+            return { ...s, text: newText };
+          }
+          return s;
+        });
+        const updated = { ...whiteboardElements, shapes: updatedShapes };
+        setWhiteboardElements(updated);
+        localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(updated));
+      }
+    }
+  };
+
+  const handleAddShape = (type: 'rectangle' | 'circle' | 'sticky' | 'wavy' | 'stacked') => {
+    const defaultColor = type === 'sticky' 
+      ? '#fef08a' 
+      : (type === 'circle' ? '#dbeafe' : '#fee2e2');
+    
+    const newShape = {
+      id: `shape_${Date.now()}`,
+      type,
+      x: 150,
+      y: 150,
+      width: type === 'sticky' ? 120 : 150,
+      height: type === 'sticky' ? 120 : 80,
+      text: type === 'sticky' 
+        ? 'Nota Adesiva' 
+        : (type === 'circle' 
+          ? 'Círculo' 
+          : (type === 'wavy' 
+            ? 'Entregável' 
+            : (type === 'stacked' ? 'Entregáveis' : 'Retângulo'))),
+      color: defaultColor
+    };
+
+    const updated = {
+      ...whiteboardElements,
+      shapes: [...whiteboardElements.shapes, newShape]
+    };
+    setWhiteboardElements(updated);
+    localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(updated));
+    setSelectedShapeId(newShape.id);
+  };
+
+  const handleClearWhiteboard = () => {
+    if (window.confirm('Deseja realmente limpar todo o quadro de desenho?')) {
+      const updated = { paths: [], shapes: [] };
+      setWhiteboardElements(updated);
+      localStorage.setItem(`mach_whiteboard_${activeProject.id}`, JSON.stringify(updated));
+      setSelectedShapeId(null);
+    }
+  };
 
   // Create / Edit Task form modal states
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -799,7 +1192,7 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
   });
 
   const { data: tasks = [], isLoading: isLoadingTasks } = useQuery<Task[]>({
-    queryKey: ['tasks', activeProject.id, dependencies],
+    queryKey: ['tasks', activeProject.id, dependencies, currentDate],
     queryFn: async () => {
       // Direct load from localStorage or seed with CPM calculation applied
       const storageKey = `tasks_${activeProject.id}`;
@@ -809,6 +1202,24 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
         loadedTasks = JSON.parse(localData);
       } else {
         loadedTasks = getInitialTasks().filter(t => t.projectId === activeProject.id);
+      }
+
+      // Auto-progression logic: if task is in 'todo' status, and simulated date is at least 2 days past startDate
+      let changed = false;
+      if (currentDate) {
+        loadedTasks = loadedTasks.map(t => {
+          if (t.status === 'todo' && t.startDate) {
+            const diff = calculateDaysDifference(currentDate, t.startDate);
+            if (diff >= 2) {
+              changed = true;
+              return { ...t, status: 'in_progress' };
+            }
+          }
+          return t;
+        });
+      }
+
+      if (changed || !localData) {
         localStorage.setItem(storageKey, JSON.stringify(loadedTasks));
       }
       return computeCPM(loadedTasks, dependencies);
@@ -2847,36 +3258,74 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
             {/* CANVAS CONTROLS */}
             <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-stone-50 border-stone-200'} border p-4 rounded-lg flex flex-wrap items-center justify-between gap-4`}>
               <div className="flex items-center gap-3">
-                <span className={`text-[10px] uppercase font-black tracking-wider ${isDark ? 'text-stone-400' : 'text-stone-605'}`}>Preset do Canvas:</span>
-                <select
-                  value={canvasPreset}
-                  onChange={(e) => changePreset(e.target.value as any)}
-                  className="mach-input py-1 px-3 text-xs bg-white dark:bg-stone-955 font-bold border border-stone-250 dark:border-stone-800 text-stone-850 dark:text-stone-100 rounded cursor-pointer max-w-xs"
-                >
-                  <option value="precedence">Fluxograma de Precedência (Dinâmico)</option>
-                  <option value="process">Fluxograma de Processo (Clássico)</option>
-                  <option value="wbs">WBS Visual (EAP Árvore)</option>
-                </select>
+                <span className={`text-[10px] uppercase font-black tracking-wider ${isDark ? 'text-stone-400' : 'text-stone-605'}`}>Visualização:</span>
+                <div className="flex border border-stone-250 dark:border-stone-800 rounded p-0.5 text-[10px] font-bold leading-none bg-stone-100 dark:bg-stone-955 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setCanvasViewMode('diagram')}
+                    className={`px-3 py-1 font-bold uppercase rounded cursor-pointer ${canvasViewMode === 'diagram' ? 'bg-red-600 text-white' : 'text-stone-400'}`}
+                    style={canvasViewMode === 'diagram' ? { color: '#ffffff' } : undefined}
+                  >
+                    Diagrama
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCanvasViewMode('whiteboard')}
+                    className={`px-3 py-1 font-bold uppercase rounded cursor-pointer ${canvasViewMode === 'whiteboard' ? 'bg-red-600 text-white' : 'text-stone-400'}`}
+                    style={canvasViewMode === 'whiteboard' ? { color: '#ffffff' } : undefined}
+                  >
+                    Quadro de Desenho
+                  </button>
+                </div>
+
+                {canvasViewMode === 'diagram' && (
+                  <>
+                    <span className={`text-[10px] uppercase font-black tracking-wider ${isDark ? 'text-stone-400' : 'text-stone-605'} ml-2`}>Preset do Canvas:</span>
+                    <select
+                      value={canvasPreset}
+                      onChange={(e) => changePreset(e.target.value as any)}
+                      className="mach-input py-1 px-3 text-xs bg-white dark:bg-stone-955 font-bold border border-stone-250 dark:border-stone-800 text-stone-850 dark:text-stone-100 rounded cursor-pointer max-w-xs"
+                    >
+                      <option value="precedence">Fluxograma de Precedência (Dinâmico)</option>
+                      <option value="process">Fluxograma de Processo (Clássico)</option>
+                      <option value="wbs">WBS Visual (EAP Árvore)</option>
+                    </select>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleAddFreeNode}
-                  className="mach-button-primary py-1.5 px-4 rounded text-white font-extrabold uppercase shrink-0 text-[10px] flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Bloco Livre
-                </button>
-                <button
-                  onClick={handleClearCanvas}
-                  className={`text-stone-500 hover:text-red-400 font-bold uppercase text-[10px] ${isDark ? 'bg-stone-955 border-stone-800' : 'bg-white border-stone-250 hover:bg-stone-50'} px-3 py-1.5 rounded border transition flex items-center gap-1.5 cursor-pointer`}
-                >
-                  Limpar Canvas
-                </button>
+                {setIsFullscreen && (
+                  <button
+                    onClick={() => setIsFullscreen(!isFullscreen)}
+                    className="p-1.5 border rounded hover:bg-stone-100 dark:hover:bg-stone-850 transition-colors cursor-pointer text-stone-505 hover:text-stone-909 dark:text-stone-400 dark:hover:text-white flex items-center justify-center bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 shadow-sm"
+                    title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+                  >
+                    {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </button>
+                )}
+
+                {canvasViewMode === 'diagram' && (
+                  <>
+                    <button
+                      onClick={handleAddFreeNode}
+                      className="mach-button-primary py-1.5 px-4 rounded text-white font-extrabold uppercase shrink-0 text-[10px] flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Adicionar Bloco Livre
+                    </button>
+                    <button
+                      onClick={handleClearCanvas}
+                      className={`text-stone-500 hover:text-red-400 font-bold uppercase text-[10px] ${isDark ? 'bg-stone-955 border-stone-800' : 'bg-white border-stone-250 hover:bg-stone-50'} px-3 py-1.5 rounded border transition flex items-center gap-1.5 cursor-pointer`}
+                    >
+                      Limpar Canvas
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* React Flow Board Wrapper */}
-            <div className={`${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-100 border-stone-250'} border rounded-lg overflow-hidden relative`} style={{ height: '560px' }}>
+            {canvasViewMode === 'diagram' ? (
+              <div className={`${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-100 border-stone-250'} border rounded-lg overflow-hidden relative`} style={{ height: '560px' }}>
               <ReactFlow
                 nodes={localNodes}
                 edges={localEdges}
@@ -3125,6 +3574,149 @@ export default function CronogramaDashboard({ activeProject, activeUser, members
                 </div>
               )}
             </div>
+            ) : (
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Whiteboard Toolbar Sidebar */}
+                <div className={`${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'} border p-3 rounded-lg flex flex-row lg:flex-col gap-3 items-center shrink-0`}>
+                  <div className="text-[10px] uppercase font-mono font-bold text-stone-400 select-none hidden lg:block text-center border-b border-stone-250 dark:border-stone-800 pb-2 w-full">
+                    Ferramentas
+                  </div>
+
+                  {/* Draw Tool */}
+                  <button
+                    type="button"
+                    onClick={() => setTool('draw')}
+                    className={`p-2 rounded transition-all cursor-pointer ${tool === 'draw' ? 'bg-red-600 text-white shadow-lg' : (isDark ? 'text-stone-400 hover:bg-stone-800' : 'text-stone-600 hover:bg-stone-100')}`}
+                    style={tool === 'draw' ? { color: '#ffffff' } : undefined}
+                    title="Caneta"
+                  >
+                    <Pen className="w-4 h-4" />
+                  </button>
+
+                  {/* Select Tool */}
+                  <button
+                    type="button"
+                    onClick={() => setTool('select')}
+                    className={`p-2 rounded transition-all cursor-pointer ${tool === 'select' ? 'bg-red-600 text-white shadow-lg' : (isDark ? 'text-stone-400 hover:bg-stone-800' : 'text-stone-600 hover:bg-stone-100')}`}
+                    style={tool === 'select' ? { color: '#ffffff' } : undefined}
+                    title="Seleção"
+                  >
+                    <MousePointer className="w-4 h-4" />
+                  </button>
+
+                  {/* Eraser Tool */}
+                  <button
+                    type="button"
+                    onClick={() => setTool('erase')}
+                    className={`p-2 rounded transition-all cursor-pointer ${tool === 'erase' ? 'bg-red-600 text-white shadow-lg' : (isDark ? 'text-stone-400 hover:bg-stone-800' : 'text-stone-600 hover:bg-stone-100')}`}
+                    style={tool === 'erase' ? { color: '#ffffff' } : undefined}
+                    title="Borracha"
+                  >
+                    <Eraser className="w-4 h-4" />
+                  </button>
+
+                  <div className="h-px bg-stone-200 dark:bg-stone-800 w-full hidden lg:block" />
+                  
+                  {/* Colors */}
+                  <div className="flex flex-row lg:flex-col gap-1.5">
+                    {[
+                      { color: '#ef4444', label: 'Vermelho' },
+                      { color: '#3b82f6', label: 'Azul' },
+                      { color: '#10b981', label: 'Verde' },
+                      { color: '#f59e0b', label: 'Amarelo' },
+                      { color: '#8b5cf6', label: 'Roxo' },
+                      { color: isDark ? '#f5f5f5' : '#1c1917', label: isDark ? 'Branco' : 'Preto' }
+                    ].map(c => (
+                      <button
+                        key={c.color}
+                        type="button"
+                        onClick={() => { setBrushColor(c.color); setTool('draw'); }}
+                        className={`w-4 h-4 rounded-full border transition-all cursor-pointer ${brushColor === c.color && tool === 'draw' ? 'scale-125 ring-2 ring-red-500 shadow-md' : 'opacity-85 hover:opacity-100'}`}
+                        style={{ backgroundColor: c.color }}
+                        title={c.label}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="h-px bg-stone-200 dark:bg-stone-800 w-full hidden lg:block" />
+
+                  {/* Add Shapes Buttons */}
+                  <div className="flex flex-row lg:flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleAddShape('rectangle')}
+                      className={`p-2 rounded transition-all cursor-pointer flex items-center justify-center ${isDark ? 'text-stone-400 hover:bg-stone-800 hover:text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'}`}
+                      title="Adicionar Retângulo"
+                    >
+                      <Square className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddShape('circle')}
+                      className={`p-2 rounded transition-all cursor-pointer flex items-center justify-center ${isDark ? 'text-stone-400 hover:bg-stone-800 hover:text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'}`}
+                      title="Adicionar Círculo"
+                    >
+                      <LucideCircle className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddShape('sticky')}
+                      className={`p-2 rounded transition-all cursor-pointer flex items-center justify-center ${isDark ? 'text-stone-400 hover:bg-stone-800 hover:text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'}`}
+                      title="Adicionar Nota Adesiva"
+                    >
+                      <StickyNote className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddShape('wavy')}
+                      className={`p-2 rounded transition-all cursor-pointer flex items-center justify-center ${isDark ? 'text-stone-400 hover:bg-stone-800 hover:text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'}`}
+                      title="Adicionar Bloco Ondulado"
+                    >
+                      <Scroll className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddShape('stacked')}
+                      className={`p-2 rounded transition-all cursor-pointer flex items-center justify-center ${isDark ? 'text-stone-400 hover:bg-stone-800 hover:text-white' : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'}`}
+                      title="Adicionar Entregáveis Sobrepostos"
+                    >
+                      <Layers className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="h-px bg-stone-200 dark:bg-stone-800 w-full hidden lg:block" />
+
+                  {/* Reset canvas */}
+                  <button
+                    type="button"
+                    onClick={handleClearWhiteboard}
+                    className="p-2 text-stone-550 hover:text-red-500 rounded hover:bg-red-500/10 transition-all cursor-pointer"
+                    title="Limpar Quadro"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Canvas drawing container */}
+                <div className="flex-grow overflow-auto border border-stone-200 dark:border-stone-800 rounded-lg shadow-inner bg-white dark:bg-stone-955">
+                  <canvas
+                    ref={canvasRef}
+                    width={1000}
+                    height={600}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseUp}
+                    onDoubleClick={handleCanvasDoubleClick}
+                    className="cursor-crosshair max-w-full block"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}

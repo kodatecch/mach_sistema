@@ -44,6 +44,7 @@ import {
 import { Project, User as UserType, OrgConfig } from '../types';
 import { exportToPDF } from '../utils/pdfExport';
 import { exportToExcel } from '../utils/excelExport';
+import EvmDashboard from './EvmDashboard';
 
 interface FinanceProps {
   activeProject: Project;
@@ -52,6 +53,8 @@ interface FinanceProps {
   users: UserType[];
   permissions?: any;
   config?: OrgConfig;
+  isFullscreen?: boolean;
+  setIsFullscreen?: (val: boolean) => void;
 }
 
 // ---------------------------------------------------------
@@ -307,11 +310,13 @@ const SEED_CASH_FLOW = (projId: string): CashFlowEntry[] => [
   }
 ];
 
-export default function Finance({ activeProject, activeUser, memberships, users, permissions, config }: FinanceProps) {
+export default function Finance({ activeProject, activeUser, memberships, users, permissions, config, isFullscreen, setIsFullscreen }: FinanceProps) {
+  const isDark = config?.theme === 'dark';
+
   // ---------------------------------------------------------
   // SUB-TAB NAVIGATION
   // ---------------------------------------------------------
-  type SubTab = 'planning' | 'quotations' | 'budget' | 'cashflow' | 'contingency' | 'reconciliation';
+  type SubTab = 'planning' | 'quotations' | 'budget' | 'cashflow' | 'contingency' | 'reconciliation' | 'evm';
 
   const enabledTabs = useMemo(() => {
     const tabs: SubTab[] = [];
@@ -321,6 +326,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
     if (config?.enableFinanceCashflow !== false) tabs.push('cashflow');
     if (config?.enableFinanceContingency !== false) tabs.push('contingency');
     if (config?.enableFinanceReconciliation !== false) tabs.push('reconciliation');
+    if (config?.enableRisksEvm !== false) tabs.push('evm');
     return tabs;
   }, [config]);
 
@@ -819,28 +825,34 @@ export default function Finance({ activeProject, activeUser, memberships, users,
     <div className="space-y-6 select-text" id="finance-detailed cockpit-container">
       
       {/* HEADER SECTION WITH INTEGRATED CRUMBS */}
-      <div className="bg-stone-900 border border-stone-850 p-6 rounded-lg shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className={`p-6 rounded-lg shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border ${
+        isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200'
+      }`}>
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-stone-500 font-mono text-[10px]">
+            <span className={`font-mono text-[10px] ${isDark ? 'text-stone-500' : 'text-stone-400'}`}>
               ID: {activeProject.id}
             </span>
           </div>
-          <h1 className="text-2xl font-display font-black uppercase text-white tracking-wide">
+          <h1 className={`text-2xl font-display font-black uppercase tracking-wide ${isDark ? 'text-white' : 'text-stone-900'}`}>
             Orçamento & Controle Monetário
           </h1>
         </div>
 
         {/* Global Floating Counters */}
         <div className="flex flex-wrap gap-4">
-          <div className="bg-stone-950 p-3 border border-stone-800 rounded text-right min-w-[140px]">
-            <span className="text-[9px] font-mono text-stone-500 block uppercase font-bold">Saldo Livre Estimado</span>
+          <div className={`p-3 border rounded text-right min-w-[140px] ${
+            isDark ? 'bg-stone-950 border-stone-800' : 'bg-stone-50 border-stone-200 shadow-sm'
+          }`}>
+            <span className={`text-[9px] font-mono block uppercase font-bold ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>Saldo Livre Estimado</span>
             <span className={`text-sm font-mono font-bold ${globalSummaryTotals.finalBalance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
               {globalSummaryTotals.finalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
             </span>
           </div>
-          <div className="bg-stone-950 p-3 border border-stone-850 rounded text-right min-w-[140px]">
-            <span className="text-[9px] font-mono text-stone-500 block uppercase font-bold">Fundo de Reserva</span>
+          <div className={`p-3 border rounded text-right min-w-[140px] ${
+            isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200 shadow-sm'
+          }`}>
+            <span className={`text-[9px] font-mono block uppercase font-bold ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>Fundo de Reserva</span>
             <span className="text-sm font-mono font-bold text-[#DC2626] flex items-center justify-end gap-1">
               <ShieldCheck className="w-4.5 h-4.5 text-[#DC2626]" />
               {contingencyBalanceAvailable.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -850,7 +862,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
       </div>
 
       {/* SUB-TAB NAV BAR (Swiss Clean Tabs) */}
-      <div className="border-b border-stone-800 overflow-x-auto shrink-0 select-none">
+      <div className={`border-b overflow-x-auto shrink-0 select-none ${isDark ? 'border-stone-800' : 'border-stone-200'}`}>
         <div className="flex space-x-1 whitespace-nowrap">
           {[
             { id: 'planning', label: '1. Planejamento (Resources)', icon: <Briefcase className="w-3.5 h-3.5" /> },
@@ -858,7 +870,8 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             { id: 'budget', label: `3. Orçamento (${activeScenario.toUpperCase()})`, icon: <Sliders className="w-3.5 h-3.5" /> },
             { id: 'cashflow', label: '4. Fluxo de Caixa / Ledger', icon: <ArrowUpRight className="w-3.5 h-3.5" /> },
             { id: 'contingency', label: '5. Reserva de Contingência', icon: <Percent className="w-3.5 h-3.5" /> },
-            { id: 'reconciliation', label: `6. Conciliação Bancária (${unreconciledItems.length})`, icon: <CheckCircle className="w-3.5 h-3.5" /> }
+            { id: 'reconciliation', label: `6. Conciliação Bancária (${unreconciledItems.length})`, icon: <CheckCircle className="w-3.5 h-3.5" /> },
+            { id: 'evm', label: '7. Análise EVM / Valor Agregado', icon: <TrendingUp className="w-3.5 h-3.5" /> }
           ].filter(tab => enabledTabs.includes(tab.id as SubTab)).map(tab => (
             <button
               key={tab.id}
@@ -867,8 +880,12 @@ export default function Finance({ activeProject, activeUser, memberships, users,
               }}
               className={`px-4 py-3 border-b-2 font-mono text-[11px] font-bold tracking-tight transition flex items-center gap-2 cursor-pointer ${
                 activeSubTab === tab.id
-                  ? 'border-[#DC2626] text-[#DC2626] bg-stone-900/45'
-                  : 'border-transparent text-stone-400 hover:text-white hover:bg-stone-900/20'
+                  ? `border-[#DC2626] text-[#DC2626] ${isDark ? 'bg-stone-900/45' : 'bg-stone-50'}`
+                  : `border-transparent ${
+                      isDark 
+                        ? 'text-stone-400 hover:text-white hover:bg-stone-900/20' 
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                    }`
               }`}
             >
               {tab.icon}
@@ -890,10 +907,10 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Form to Register Resource */}
-              <div className="bg-stone-900 p-5 rounded-lg border border-stone-850">
+              <div className={`p-5 rounded-lg border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="p-1 px-1.5 rounded bg-stone-800 text-stone-300 text-[10px] font-mono font-bold">ADD</span>
-                  <h3 className="text-xs font-bold uppercase text-white tracking-wider">Novo Recurso Recomendado</h3>
+                  <span className={`p-1 px-1.5 rounded text-[10px] font-mono font-bold ${isDark ? 'bg-stone-800 text-stone-300' : 'bg-stone-100 text-stone-600'}`}>ADD</span>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Novo Recurso Recomendado</h3>
                 </div>
 
                 <form onSubmit={handleAddResource} className="space-y-4">
@@ -995,13 +1012,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
               </div>
 
               {/* Resources Table */}
-              <div className="lg:col-span-2 bg-stone-900 border border-stone-850 p-5 rounded-lg">
+              <div className={`lg:col-span-2 p-5 rounded-lg border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
                 <div className="flex justify-between items-center mb-4 select-none">
                   <div>
-                    <h3 className="text-xs font-bold uppercase text-white tracking-wider">Talonário de Recursos Planejados</h3>
+                    <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Talonário de Recursos Planejados</h3>
                     <p className="text-[10px] text-stone-500 font-mono">Totalizadores vinculados ao cronograma de hardware</p>
                   </div>
-                  <span className="text-[10px] bg-stone-950 border border-stone-800 text-stone-400 px-3 py-1 font-mono rounded">
+                  <span className={`text-[10px] px-3 py-1 font-mono rounded border ${isDark ? 'bg-stone-950 border-stone-800 text-stone-400' : 'bg-stone-100 border-stone-200 text-stone-600'}`}>
                     {resources.length} Itens Mapeados
                   </span>
                 </div>
@@ -1009,7 +1026,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse font-sans">
                     <thead>
-                      <tr className="bg-stone-950 text-stone-500 font-mono text-[10px] uppercase font-bold border-b border-stone-800">
+                      <tr className={`font-mono text-[10px] uppercase font-bold border-b ${isDark ? 'bg-stone-950 text-stone-500 border-stone-800' : 'bg-stone-50 text-stone-600 border-stone-200'}`}>
                         <th className="p-3">Recurso</th>
                         <th className="p-3 text-center">Qtde</th>
                         <th className="p-3">Categoria</th>
@@ -1018,13 +1035,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         <th className="p-3 text-right">Ação</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-850 bg-stone-950/20">
+                    <tbody className={`divide-y ${isDark ? 'divide-stone-850 bg-stone-950/20' : 'divide-stone-200 bg-stone-50/10'}`}>
                       {resources.length === 0 ? (
                         <tr>
                           <td colSpan={6} className="p-8">
-                            <div className="text-center py-8 px-4 bg-stone-950/30 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                            <div className={`text-center py-8 px-4 border border-dashed rounded flex flex-col items-center justify-center space-y-2 animate-fade-in ${isDark ? 'bg-stone-950/30 border-stone-800' : 'bg-stone-50 border-stone-200'}`}>
                               <Briefcase className="w-8 h-8 text-stone-700/60" />
-                              <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum recurso cadastrado</p>
+                              <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>Nenhum recurso cadastrado</p>
                               <p className="text-[10px] text-stone-500 max-w-xs">Insira novos insumos na barra lateral para iniciar o planejamento financeiro do hardware.</p>
                             </div>
                           </td>
@@ -1035,38 +1052,48 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           const hasWinner = quotations.some(q => q.resourceId === res.id && q.isSelected);
                           
                           return (
-                            <tr key={res.id} className="hover:bg-stone-900/40 transition">
+                            <tr key={res.id} className={`transition ${isDark ? 'hover:bg-stone-900/40 border-stone-850' : 'hover:bg-stone-105 border-stone-150'}`}>
                               <td className="p-3">
                                 <div>
-                                  <p className="font-bold text-stone-100">{res.name}</p>
+                                  <p className={`font-bold ${isDark ? 'text-stone-100' : 'text-stone-850'}`}>{res.name}</p>
                                   <p className="text-[10px] text-stone-500 font-mono flex items-center gap-1.5 mt-0.5">
                                     <span className="w-1.5 h-1.5 rounded-full bg-stone-600" />
                                     {translateOrigin(res.origin)}
                                   </p>
                                 </div>
                               </td>
-                              <td className="p-3 text-center font-mono font-bold text-stone-300">{res.quantity}</td>
+                              <td className={`p-3 text-center font-mono font-bold ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>{res.quantity}</td>
                               <td className="p-3">
-                                <span className="bg-stone-800 border border-stone-750 px-2 py-0.5 rounded text-[10px] text-stone-400 font-mono">
+                                <span className={`border px-2 py-0.5 rounded text-[10px] font-mono ${
+                                  isDark 
+                                    ? 'bg-stone-800 border-stone-750 text-stone-400' 
+                                    : 'bg-stone-100 border-stone-200 text-stone-700 font-semibold'
+                                }`}>
                                   {res.category}
                                 </span>
                               </td>
-                              <td className="p-3 font-mono text-stone-400 text-stone-450">{res.idealDate.split('-').reverse().join('/')}</td>
-                              <td className="p-3 font-medium text-stone-300">{res.owner}</td>
+                              <td className={`p-3 font-mono ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>{res.idealDate.split('-').reverse().join('/')}</td>
+                              <td className={`p-3 font-medium ${isDark ? 'text-stone-300' : 'text-stone-700'}`}>{res.owner}</td>
                               <td className="p-3 text-right">
                                 <button
                                   onClick={() => {
                                     setSelectedQuoteResource(res.id);
                                     setActiveSubTab('quotations');
                                   }}
-                                  className={`px-2.5 py-1.5 text-[10px] font-mono font-bold rounded flex items-center justify-center gap-1 ml-auto cursor-pointer transition ${
+                                  className={`px-2.5 py-1.5 text-[10px] font-mono font-bold rounded flex items-center justify-center gap-1 ml-auto cursor-pointer transition border ${
                                     hasWinner
-                                      ? 'bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900'
-                                      : 'bg-[#DC2626] hover:bg-[#DC2626]/85 text-white'
+                                      ? isDark
+                                        ? 'bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-450 border-emerald-900'
+                                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-250 font-semibold'
+                                      : 'bg-[#DC2626] hover:bg-[#DC2626]/85 text-white border-transparent'
                                   }`}
                                 >
                                   <span>Gerar cotações</span>
-                                  <span className="bg-stone-950/50 rounded-full px-1 py-0.1 select-none font-sans font-bold text-[9px] text-white">
+                                  <span className={`rounded-full px-1 py-0.1 select-none font-sans font-bold text-[9px] ${
+                                    hasWinner
+                                      ? isDark ? 'bg-stone-950/50 text-white' : 'bg-emerald-200 text-emerald-800'
+                                      : 'bg-stone-950/50 text-white'
+                                  }`}>
                                     {quoteCount}
                                   </span>
                                 </button>
@@ -1079,7 +1106,11 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   </table>
                 </div>
 
-                <div className="bg-stone-950 border border-stone-850 p-4 rounded mt-4 flex items-start gap-2.5 text-[11px] text-stone-400 leading-relaxed">
+                <div className={`p-4 rounded mt-4 flex items-start gap-2.5 text-[11px] leading-relaxed border ${
+                  isDark 
+                    ? 'bg-stone-950 border-stone-850 text-stone-400' 
+                    : 'bg-stone-50 border-stone-200 text-stone-600'
+                }`}>
                   <Sparkles className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                   <span>
                     <strong>Instrução da Equipe:</strong> Cadastre novos insumos estruturais ou eletrônicos. Depois, clique em <strong>Gerar cotações</strong> para inserir possíveis fornecedores e definir a proposta vencedora que guiará a estimativa oficial.
@@ -1096,8 +1127,8 @@ export default function Finance({ activeProject, activeUser, memberships, users,
           <div className="space-y-6">
             
             {/* Selected resource selector cards */}
-            <div className="bg-stone-900 border border-stone-850 p-5 rounded-lg select-none">
-              <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-450 block mb-3">
+            <div className={`p-5 rounded-lg select-none border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
+              <label className={`text-[10px] font-mono font-bold uppercase tracking-wider block mb-3 ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                 Selecione o Insumo do EAP para Adicionar Cotações e Comparar:
               </label>
               
@@ -1112,22 +1143,32 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       onClick={() => setSelectedQuoteResource(res.id)}
                       className={`p-3 rounded text-left border cursor-pointer transition flex flex-col justify-between ${
                         isSelected 
-                          ? 'bg-stone-850 border-[#DC2626] text-white' 
-                          : 'bg-stone-950 border-stone-850 text-stone-400 hover:text-stone-200'
+                          ? isDark 
+                            ? 'bg-stone-850 border-[#DC2626] text-stone-100' 
+                            : 'bg-stone-100 border-[#DC2626] text-stone-900 font-semibold'
+                          : isDark
+                            ? 'bg-stone-950 border-stone-850 text-stone-400 hover:text-stone-200'
+                            : 'bg-white border-stone-200 text-stone-600 hover:bg-stone-50 hover:text-stone-900'
                       }`}
                     >
                       <div>
-                        <p className="font-bold text-xs truncate max-w-[220px]">{res.name}</p>
+                        <p className={`font-bold text-xs truncate max-w-[220px] ${
+                          isSelected 
+                            ? isDark ? 'text-white' : 'text-stone-900' 
+                            : isDark ? 'text-stone-300' : 'text-stone-700'
+                        }`}>{res.name}</p>
                         <p className="text-[9px] font-mono mt-1 text-stone-500">
                           {res.quantity} {res.quantity === 1 ? 'unidade' : 'unidades'} • {res.category}
                         </p>
                       </div>
-                      <div className="flex justify-between items-center mt-3 pt-2 border-t border-stone-900 w-full text-[9px] font-mono">
+                      <div className={`flex justify-between items-center mt-3 pt-2 border-t w-full text-[9px] font-mono ${
+                        isDark ? 'border-stone-900 text-stone-400' : 'border-stone-200 text-stone-600'
+                      }`}>
                         <span>Cotações: {quotations.filter(q => q.resourceId === res.id).length}</span>
                         {hasWinner ? (
-                          <span className="text-emerald-500 font-bold">✓ Vencedora</span>
+                          <span className="text-emerald-600 font-bold">✓ Vencedora</span>
                         ) : (
-                          <span className="text-amber-500 font-bold">⚡ Padrão</span>
+                          <span className="text-amber-600 font-bold">⚡ Padrão</span>
                         )}
                       </div>
                     </button>
@@ -1146,14 +1187,14 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     
                     {/* Form to insert details */}
-                    <div className="lg:col-span-4 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+                    <div className={`lg:col-span-4 p-5 rounded-lg flex flex-col justify-between border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
                       <div>
-                        <div className="flex items-center gap-1.5 mb-3 pb-2 border-b border-stone-850">
+                        <div className={`flex items-center gap-1.5 mb-3 pb-2 border-b ${isDark ? 'border-stone-850' : 'border-stone-200'}`}>
                           <ShoppingBag className="w-4.5 h-4.5 text-[#DC2626]" />
-                          <h3 className="text-xs font-bold uppercase text-white tracking-wider">Inserir Proposta Fornecedor</h3>
+                          <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Inserir Proposta Fornecedor</h3>
                         </div>
-                        <p className="text-[11px] text-stone-400 leading-relaxed mb-4">
-                          Insira valores e especificações para: <strong className="text-stone-200">{activeRes?.name}</strong>
+                        <p className={`text-[11px] leading-relaxed mb-4 ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
+                          Insira valores e especificações para: <strong className={isDark ? 'text-stone-200' : 'text-stone-800'}>{activeRes?.name}</strong>
                         </p>
 
                         <form onSubmit={handleAddQuotation} className="space-y-4">
@@ -1217,117 +1258,135 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                             + Confirmar Cotação
                           </button>
                         </form>
-                      </div>
-
-                      <div className="bg-stone-950 p-3 border border-stone-850 rounded mt-5 text-[10px] text-stone-500 leading-relaxed font-mono">
+                      <div className={`p-3 rounded mt-5 text-[10px] leading-relaxed font-mono border ${isDark ? 'bg-stone-950 border-stone-850 text-stone-400' : 'bg-stone-50 border-stone-200 text-stone-600'}`}>
                         ⚠️ Ao selecionar uma proposta como vencecedora, os preços unitários nos desdobramentos de contabilidade e no plano de ação física do chassi serão automaticamente atualizados.
                       </div>
                     </div>
+                  </div>
 
                     {/* SIDE BY SIDE COMPARATIVE CARDS (N comparative columns side-by-side) */}
-                    <div className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+                    <div className={`lg:col-span-8 p-5 rounded-lg flex flex-col justify-between border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
                       <div>
-                        <div className="flex justify-between items-center mb-5 pb-2 border-b border-stone-850">
+                        <div className={`flex justify-between items-center mb-5 pb-2 border-b ${isDark ? 'border-stone-850' : 'border-stone-200'}`}>
                           <div>
-                            <h3 className="text-xs font-bold uppercase text-white tracking-wider">Comparativo de Propostas Comerciais</h3>
-                            <p className="text-[10px] text-stone-400 mt-0.5">Visão multifator de cotações para: <span className="text-red-500 font-bold">{activeRes?.name}</span></p>
+                            <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Comparativo de Propostas Comerciais</h3>
+                            <p className={`text-[10px] mt-0.5 ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>Visão multifator de cotações para: <span className="text-red-500 font-bold">{activeRes?.name}</span></p>
                           </div>
-                          <span className="text-[10px] font-mono bg-stone-950 text-[#DC2626] border border-stone-800 px-3 py-1 rounded">
+                          <span className={`text-[10px] font-mono rounded px-3 py-1 border ${isDark ? 'bg-stone-950 border-stone-800 text-[#DC2626]' : 'bg-red-50 border-red-200 text-[#DC2626]'}`}>
                             {matchingQuotes.length} Cadastradas
                           </span>
                         </div>
                       </div>
 
-                        {matchingQuotes.length === 0 ? (
-                          <div className="text-center py-16 bg-stone-950/20 border border-dashed border-stone-800 rounded-lg flex flex-col items-center justify-center space-y-3 animate-fade-in w-full">
-                            <AlertTriangle className="w-8 h-8 text-amber-500/60" />
-                            <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Sem Cotações para este Recurso</p>
-                            <p className="text-[10px] text-stone-500 max-w-xs">Use o painel lateral para registrar propostas de fornecedores e comparar custos de aquisição.</p>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {matchingQuotes.map(quote => {
-                              const calculatedTotal = (activeRes?.quantity || 1) * quote.unitPrice;
-                              
-                              return (
-                                <div 
-                                  key={quote.id}
-                                  className={`relative rounded border p-4 flex flex-col justify-between transition min-h-[280px] ${
-                                    quote.isSelected
-                                      ? 'bg-stone-950 border-[#DC2626] shadow-lg shadow-[#DC2626]/5'
-                                      : 'bg-stone-950/45 border-stone-850 hover:border-stone-700'
-                                  }`}
-                                >
-                                  {quote.isSelected && (
-                                    <div className="absolute top-2 right-2 bg-emerald-555/10 border border-emerald-500/35 text-emerald-400 text-[8px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                                      Vencedora ★
-                                    </div>
-                                  )}
+                      {matchingQuotes.length === 0 ? (
+                        <div className={`text-center py-16 border border-dashed rounded-lg flex flex-col items-center justify-center space-y-3 animate-fade-in w-full ${isDark ? 'bg-stone-950/20 border-stone-800' : 'bg-stone-50 border-stone-200'}`}>
+                          <AlertTriangle className="w-8 h-8 text-amber-500/60" />
+                          <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>Sem Cotações para este Recurso</p>
+                          <p className="text-[10px] text-stone-500 max-w-xs">Use o painel lateral para registrar propostas de fornecedores e comparar custos de aquisição.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {matchingQuotes.map(quote => {
+                            const calculatedTotal = (activeRes?.quantity || 1) * quote.unitPrice;
+                            
+                            return (
+                              <div 
+                                key={quote.id}
+                                className={`relative rounded border p-4 flex flex-col justify-between transition min-h-[280px] ${
+                                  quote.isSelected
+                                    ? isDark
+                                      ? 'bg-stone-955 border-[#DC2626] shadow-lg shadow-[#DC2626]/5'
+                                      : 'bg-red-50 border-[#DC2626] shadow-md shadow-red-200/40'
+                                    : isDark
+                                      ? 'bg-stone-950/45 border-stone-850 hover:border-stone-700'
+                                      : 'bg-white border-stone-200 hover:border-stone-400'
+                                }`}
+                              >
+                                {quote.isSelected && (
+                                  <div className={`absolute top-2 right-2 border text-[8px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                    isDark 
+                                      ? 'bg-emerald-950/40 border-emerald-900/40 text-emerald-400' 
+                                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                  }`}>
+                                    Vencedora ★
+                                  </div>
+                                )}
 
-                                  <div className="space-y-3">
+                                <div className="space-y-3">
+                                  <div>
+                                    <p className="text-[10px] font-mono text-stone-500 uppercase font-bold tracking-tight">FORNECEDOR</p>
+                                    <h4 className={`text-xs font-bold mt-0.5 leading-snug ${isDark ? 'text-stone-100' : 'text-stone-900'}`}>{quote.supplier}</h4>
+                                  </div>
+
+                                  <div className={`grid grid-cols-2 gap-2 p-2 rounded ${isDark ? 'bg-stone-900/60' : 'bg-stone-100/80'}`}>
                                     <div>
-                                      <p className="text-[10px] font-mono text-stone-500 uppercase font-bold tracking-tight">FORNECEDOR</p>
-                                      <h4 className="text-xs font-bold text-stone-100 mt-0.5 leading-snug">{quote.supplier}</h4>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 bg-stone-900/60 p-2 rounded">
-                                      <div>
-                                        <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">PREÇO UNIT.</p>
-                                        <p className="text-xs font-mono font-bold text-stone-200 mt-0.5">
-                                          {quote.unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                      </div>
-                                      <div>
-                                        <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">TOTAL ({activeRes?.quantity || 1}x)</p>
-                                        <p className="text-xs font-mono font-bold text-[#DC2626] mt-0.5">
-                                          {calculatedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </p>
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      <p className="text-[9px] font-mono text-stone-500 font-bold uppercase flex items-center gap-1">
-                                        <Clock className="w-3 h-3 text-stone-500" /> PRAZO DE FRETE
+                                      <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">PREÇO UNIT.</p>
+                                      <p className={`text-xs font-mono font-bold mt-0.5 ${isDark ? 'text-stone-200' : 'text-stone-800'}`}>
+                                        {quote.unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                       </p>
-                                      <p className="text-xs font-medium text-stone-300 mt-0.5">{quote.deliveryDays} dias úteis</p>
                                     </div>
-
                                     <div>
-                                      <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">GARANTIA E OBSERVAÇÕES</p>
-                                      <p className="text-[10px] text-stone-400 mt-1 italic leading-relaxed bg-stone-900 border border-stone-850 p-2 rounded max-h-[80px] overflow-y-auto">
-                                        "{quote.qualityRemarks}"
+                                      <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">TOTAL ({activeRes?.quantity || 1}x)</p>
+                                      <p className="text-xs font-mono font-bold text-[#DC2626] mt-0.5">
+                                        {calculatedTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                       </p>
                                     </div>
                                   </div>
 
-                                  <div className="mt-5 pt-3 border-t border-stone-850/80">
-                                    {quote.isSelected ? (
-                                      <div className="w-full text-center bg-stone-900/60 text-emerald-450 border border-emerald-900/40 text-[10px] font-mono font-bold py-1.5 rounded flex items-center justify-center gap-1">
-                                        <Check className="w-3.5 h-3.5" /> Proposta Sugerida no Orçamento
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={() => selectAsWinner(quote.id)}
-                                        className="w-full bg-[#DC2626] hover:bg-[#DC2626]/85 text-white font-mono text-[10px] font-bold py-1.5 rounded transition cursor-pointer text-center"
-                                      >
-                                        Selecionar como vencedora
-                                      </button>
-                                    )}
+                                  <div>
+                                    <p className="text-[9px] font-mono text-stone-500 font-bold uppercase flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-stone-500" /> PRAZO DE FRETE
+                                    </p>
+                                    <p className={`text-xs font-medium mt-0.5 ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>{quote.deliveryDays} dias úteis</p>
                                   </div>
 
+                                  <div>
+                                    <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">GARANTIA E OBSERVAÇÕES</p>
+                                    <p className={`text-[10px] mt-1 italic leading-relaxed border p-2 rounded max-h-[80px] overflow-y-auto ${
+                                      isDark ? 'bg-stone-900 border-stone-850 text-stone-400' : 'bg-stone-50 border-stone-200 text-stone-600'
+                                    }`}>
+                                      "{quote.qualityRemarks}"
+                                    </p>
+                                  </div>
                                 </div>
-                              );
-                            })}
+
+                                <div className={`mt-5 pt-3 border-t ${isDark ? 'border-stone-850/80' : 'border-stone-200'}`}>
+                                  {quote.isSelected ? (
+                                    <div className={`w-full text-center text-[10px] font-mono font-bold py-1.5 rounded flex items-center justify-center gap-1 border ${
+                                      isDark 
+                                        ? 'bg-stone-900/60 text-emerald-450 border-emerald-900/40' 
+                                        : 'bg-emerald-50 text-emerald-700 border-emerald-250'
+                                    }`}>
+                                      <Check className="w-3.5 h-3.5" /> Proposta Sugerida no Orçamento
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => selectAsWinner(quote.id)}
+                                      className="w-full bg-[#DC2626] hover:bg-[#DC2626]/85 text-white font-mono text-[10px] font-bold py-1.5 rounded transition cursor-pointer text-center"
+                                    >
+                                      Selecionar como vencedora
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           </div>
                         )}
                       </div>
 
                       {/* Completed Workflow Checkpoint suggestion */}
                       {matchingQuotes.some(q => q.isSelected) && (
-                        <div className="bg-[#DC2626]/10 border border-[#DC2626]/40 p-4 rounded mt-6 flex flex-col sm:flex-row gap-3 justify-between sm:items-center select-none">
+                        <div className={`lg:col-span-12 p-4 rounded mt-6 flex flex-col sm:flex-row gap-3 justify-between sm:items-center select-none border ${
+                          isDark 
+                            ? 'bg-[#DC2626]/10 border-[#DC2626]/40' 
+                            : 'bg-red-50/50 border-red-200/80 shadow-sm'
+                        }`}>
                           <div className="space-y-1">
-                            <p className="text-xs font-bold text-white font-mono uppercase tracking-tight">Etapa Concluída: Cotação Selecionada! 🚀</p>
-                            <p className="text-[10px] text-stone-400">Pronto para criar uma linha orçamentária sugerindo automaticamente este valor vencedor.</p>
+                            <p className={`text-xs font-bold font-mono uppercase tracking-tight ${
+                              isDark ? 'text-white' : 'text-red-750 font-black'
+                            }`}>Etapa Concluída: Cotação Selecionada! 🚀</p>
+                            <p className={`text-[10px] ${isDark ? 'text-stone-400' : 'text-stone-605'}`}>Pronto para criar uma linha orçamentária sugerindo automaticamente este valor vencedor.</p>
                           </div>
                           <button
                             onClick={() => {
@@ -1345,7 +1404,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                 );
               })()
             ) : (
-              <div className="text-center py-10 bg-stone-900 rounded border border-stone-850 text-stone-500">
+              <div className={`text-center py-10 rounded border ${
+                isDark ? 'bg-stone-900 border-stone-850 text-stone-500' : 'bg-stone-50 border-stone-200 text-stone-400 shadow-sm'
+              }`}>
                 Selecione ou adicione um material acima para ver seu comparativo.
               </div>
             )}
@@ -1358,20 +1419,20 @@ export default function Finance({ activeProject, activeUser, memberships, users,
           <div className="space-y-6">
             
             {/* Scenario toggle explanatory banner */}
-            <div className="bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 select-none">
+            <div className={`p-5 rounded-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-6 select-none border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
               <div className="space-y-1">
-                <h3 className="text-xs font-bold uppercase text-white tracking-widest flex items-center gap-1.5">
+                <h3 className={`text-xs font-bold uppercase tracking-widest flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-stone-900'}`}>
                   <Sliders className="w-4 h-4 text-[#DC2626]" />
                   Simulador Ativo de Margens de Hardware
                 </h3>
-                <p className="text-xs text-stone-400">
+                <p className={`text-xs ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                   Tabela EAP consolidada. Escolha o cenário financeiro para ajustar os custos calculados em toda a cadeia de prototipagem.
                 </p>
               </div>
 
               {/* Toggle controls resembling the UI requested */}
-              <div className="bg-stone-950 p-1.5 border border-stone-800 rounded flex items-center font-mono text-xs">
-                <span className="text-[9px] font-bold text-stone-500 px-3 uppercase text-stone-450">CENÁRIO:</span>
+              <div className={`p-1.5 rounded flex items-center font-mono text-xs border ${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-100 border-stone-200'}`}>
+                <span className={`text-[9px] font-bold px-3 uppercase ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>CENÁRIO:</span>
                 <div className="flex gap-1">
                   {[
                     { id: 'otimista', label: 'Otimista (-15%)', color: 'hover:text-emerald-400' },
@@ -1387,7 +1448,7 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         className={`px-3 py-1 font-bold rounded text-[10px] uppercase transition cursor-pointer ${
                           isSelected
                             ? 'bg-[#DC2626] text-white font-extrabold shadow-md'
-                            : `text-stone-400 ${scenario.color}`
+                            : `${isDark ? 'text-stone-400' : 'text-stone-600'} ${scenario.color}`
                         }`}
                       >
                         {scenario.label}
@@ -1401,15 +1462,15 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Add New Line Block */}
-              <div className="lg:col-span-4 bg-stone-900 border border-stone-850 p-5 rounded-lg">
-                <div className="flex justify-between items-center mb-4 pb-2 border-b border-stone-850 select-none">
-                  <h3 className="text-xs font-bold uppercase text-white tracking-wider">Nova Linha de Custo Orçada</h3>
-                  <span className="text-[9px] font-mono bg-stone-950 text-stone-500 px-2 py-0.5 rounded">EAP PLAN</span>
+              <div className={`lg:col-span-4 p-5 rounded-lg border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
+                <div className={`flex justify-between items-center mb-4 pb-2 border-b select-none ${isDark ? 'border-stone-850' : 'border-stone-200'}`}>
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Nova Linha de Custo Orçada</h3>
+                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${isDark ? 'bg-stone-950 border-stone-800 text-stone-500' : 'bg-stone-100 border-stone-200 text-stone-600'}`}>EAP PLAN</span>
                 </div>
 
                 {/* Suggested from winner quotes trigger */}
                 {suggestedWinnerQuotes.length > 0 && (
-                  <div className="mb-4 bg-stone-950 border border-stone-850 p-3 rounded text-xs">
+                  <div className={`mb-4 p-3 rounded text-xs border ${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200'}`}>
                     <p className="text-[10px] font-mono text-amber-500 font-bold uppercase tracking-wide mb-1.5">
                       💡 Cotação Vencedora Encontrada!
                     </p>
@@ -1421,10 +1482,10 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                             key={idx}
                             type="button"
                             onClick={() => applySuggestedQuote(item.resource, item.winner)}
-                            className="w-full text-left bg-stone-900 hover:bg-stone-850 border border-stone-850 p-2 rounded text-[10px] text-stone-300 transition cursor-pointer flex justify-between items-center"
+                            className={`w-full text-left border p-2 rounded text-[10px] transition cursor-pointer flex justify-between items-center ${isDark ? 'bg-stone-900 hover:bg-stone-850 border-stone-850 text-stone-300' : 'bg-white hover:bg-stone-50 border-stone-200 text-stone-700'}`}
                           >
                             <span className="font-bold truncate max-w-[150px]">{item.resource.name}</span>
-                            <span className="text-emerald-500 font-bold font-mono">
+                            <span className="text-emerald-600 font-bold font-mono">
                               {item.winner.unitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
                           </button>
@@ -1493,9 +1554,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     </div>
                   </div>
 
-                  <div className="bg-stone-950 p-3 border border-stone-850 rounded text-center">
+                  <div className={`p-3 border rounded text-center ${isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200'}`}>
                     <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">VALOR TOTAL ESTIMADO (SEM AJUSTE)</p>
-                    <p className="text-md font-mono font-bold text-white mt-1">
+                    <p className={`text-md font-mono font-bold mt-1 ${isDark ? 'text-white' : 'text-stone-900'}`}>
                       {(budgetForm.quantity * budgetForm.unitValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                   </div>
@@ -1510,12 +1571,12 @@ export default function Finance({ activeProject, activeUser, memberships, users,
               </div>
 
               {/* Detailed Budgeted Cost Table */}
-              <div id="budget-table-export-container" className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+              <div id="budget-table-export-container" className={`lg:col-span-8 p-5 rounded-lg flex flex-col justify-between border ${isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'}`}>
                 <div>
                   <div className="flex justify-between items-center mb-4 select-none gap-4">
                     <div>
-                      <h3 className="text-xs font-bold uppercase text-white tracking-wider">Planilha Analítica por Categorias</h3>
-                      <p className="text-[10px] text-stone-500 mt-1 leading-snug">Visualizando multiplicador de cenário: <span className="text-[#DC2626] font-bold font-mono">{(scenarioMultiplier * 100)}%</span></p>
+                      <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Planilha Analítica por Categorias</h3>
+                      <p className={`text-[10px] mt-1 leading-snug ${isDark ? 'text-stone-500' : 'text-stone-600'}`}>Visualizando multiplicador de cenário: <span className="text-[#DC2626] font-bold font-mono">{(scenarioMultiplier * 100)}%</span></p>
                     </div>
 
                     <button
@@ -1527,9 +1588,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       Exportar PDF
                     </button>
                     
-                    <div className="text-right bg-stone-950 border border-stone-800 px-3 py-1.5 rounded text-xs select-none">
-                      <span className="text-[9px] font-mono text-stone-450 block uppercase font-bold">Custo Total Consolidado</span>
-                      <span className="font-mono font-bold text-white text-sm">
+                    <div className={`text-right px-3 py-1.5 rounded text-xs select-none border ${isDark ? 'bg-stone-950 border-stone-800' : 'bg-stone-50 border-stone-250'}`}>
+                      <span className={`text-[9px] font-mono block uppercase font-bold ${isDark ? 'text-stone-450' : 'text-stone-500'}`}>Custo Total Consolidado</span>
+                      <span className={`font-mono font-bold text-sm ${isDark ? 'text-white' : 'text-stone-900'}`}>
                         {renderedBudgetLines.reduce((acc, line) => acc + line.totalCost, 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
                     </div>
@@ -1538,51 +1599,53 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse font-sans">
                       <thead>
-                        <tr className="bg-stone-950 text-stone-500 font-mono text-[10px] uppercase font-bold border-b border-b-stone-800">
+                        <tr className={`font-mono text-[10px] uppercase font-bold border-b ${isDark ? 'bg-stone-950 text-stone-500 border-stone-800' : 'bg-stone-50 text-stone-600 border-stone-200'}`}>
                           <th className="p-3">Gasto Planejado (Designação)</th>
                           <th className="p-3">Categoria</th>
                           <th className="p-3 text-center">Qtde</th>
                           <th className="p-3 text-right">Unitário Base</th>
                           <th className="p-3 text-right text-[#DC2626]">Unitário Cenário</th>
-                          <th className="p-3 text-right font-bold text-white">Custo Total</th>
+                          <th className="p-3 text-right font-bold">Custo Total</th>
                           <th className="p-3 text-center">Ações</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-850 bg-stone-950/20">
+                      <tbody className={`divide-y ${isDark ? 'divide-stone-850 bg-stone-950/20' : 'divide-stone-200 bg-stone-50/10'}`}>
                         {renderedBudgetLines.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="p-8">
-                              <div className="text-center py-8 px-4 bg-stone-950/30 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                              <div className={`text-center py-8 px-4 border border-dashed rounded flex flex-col items-center justify-center space-y-2 animate-fade-in ${isDark ? 'bg-stone-950/30 border-stone-800' : 'bg-stone-50 border-stone-200'}`}>
                                 <Sliders className="w-8 h-8 text-stone-700/60" />
-                                <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhum Custo Orçado</p>
+                                <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>Nenhum Custo Orçado</p>
                                 <p className="text-[10px] text-stone-500 max-w-xs">Adicione linhas planejadas no formulário lateral ou clique em "Gerar cotações" para importar valores de fornecedores.</p>
                               </div>
                             </td>
                           </tr>
                         ) : (
                           renderedBudgetLines.map(line => (
-                            <tr key={line.id} className="hover:bg-stone-900/40 transition">
+                            <tr key={line.id} className={`transition ${isDark ? 'hover:bg-stone-900/40 border-stone-850' : 'hover:bg-stone-100 border-stone-150'}`}>
                               <td className="p-3">
                                 <div>
-                                  <p className="font-bold text-stone-200">{line.name}</p>
+                                  <p className={`font-bold ${isDark ? 'text-stone-200' : 'text-stone-850'}`}>{line.name}</p>
                                   <p className="text-[9px] text-[#DC2626] hover:underline cursor-pointer flex items-center gap-1 mt-0.5 select-none" onClick={() => autoLogExpense(line)}>
                                     ⚡ Lançar despesa correspondente em Caixa
                                   </p>
                                 </div>
                               </td>
                               <td className="p-3">
-                                <span className="bg-stone-800 border border-stone-750 px-2 py-0.5 rounded text-[9px] text-stone-400 font-mono">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-mono border ${
+                                  isDark 
+                                    ? 'bg-stone-800 border-stone-750 text-stone-400' 
+                                    : 'bg-stone-100 border-stone-200 text-stone-600'
+                                }`}>
                                   {line.category}
                                 </span>
                               </td>
-                              <td className="p-3 text-center font-mono font-bold text-stone-300">{line.quantity}</td>
-                              <td className="p-3 text-right font-mono text-stone-400">
-                                {line.unitValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                              </td>
-                              <td className="p-3 text-right font-mono text-stone-300 font-bold bg-[#DC2626]/5 text-[#DC2626] border-x border-[#DC2626]/10">
+                              <td className={`p-3 text-center font-mono font-bold ${isDark ? 'text-stone-300' : 'text-stone-850'}`}>{line.quantity}</td>
+                              <td className={`p-3 text-right font-mono ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>{line.unitValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                              <td className={`p-3 text-right font-mono font-bold bg-[#DC2626]/5 text-[#DC2626] border-x ${isDark ? 'border-stone-850' : 'border-stone-150'}`}>
                                 {line.calculatedUnitCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </td>
-                              <td className="p-3 text-right font-mono font-black text-white bg-stone-950/30">
+                              <td className={`p-3 text-right font-mono font-black ${isDark ? 'text-white' : 'text-stone-900'}`}>
                                 {line.totalCost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </td>
                               <td className="p-3 text-center select-none">
@@ -1602,7 +1665,11 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   </div>
                 </div>
 
-                <div className="bg-stone-950/80 p-3 border border-stone-850 rounded text-[11px] text-stone-500 text-stone-400 leading-relaxed font-sans mt-5">
+                <div className={`p-3 border rounded text-[11px] leading-relaxed font-sans mt-5 ${
+                  isDark 
+                    ? 'bg-stone-950/80 border-stone-850 text-stone-400' 
+                    : 'bg-amber-50/50 border-amber-200/80 text-stone-705 shadow-sm'
+                }`}>
                   💡 <strong>Impacto integrado:</strong> As linhas planejadas servem como o baseline orçamentário. Quando você clica em "Lançar despesa", o sistema facilita as entradas de caixa, comparando orçado x realizado instantaneamente.
                 </div>
               </div>
@@ -1615,12 +1682,14 @@ export default function Finance({ activeProject, activeUser, memberships, users,
         {/* TAB 4: CASH FLOW LEDGER & GRAPH */}
         {activeSubTab === 'cashflow' && (
           permissions?.isSponsor ? (
-            <div className="bg-stone-900 border border-stone-850 rounded p-12 text-center flex flex-col items-center justify-center space-y-4 font-mono">
+            <div className={`border rounded p-12 text-center flex flex-col items-center justify-center space-y-4 font-mono ${
+              isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+            }`}>
               <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center border border-yellow-500/20 text-yellow-500 animate-pulse">
                 ⚠️
               </div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">Acesso Restrito: Nível Sponsor</h3>
-              <p className="text-xs text-stone-400 max-w-md mx-auto leading-relaxed">
+              <h3 className={`text-sm font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Acesso Restrito: Nível Sponsor</h3>
+              <p className={`text-xs max-w-md mx-auto leading-relaxed ${isDark ? 'text-stone-400' : 'text-stone-605'}`}>
                 Sponsors possuem nível de acesso restrito ao resumo financeiro macro e planejamento orçamentário. O fluxo de caixa detalhado por lançamento individual é confidencial nesta área do bólido.
               </p>
             </div>
@@ -1630,8 +1699,10 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             {/* Ledger highlights indicators */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cashflow-totals-grid">
               
-              <div className="mach-card bg-stone-900 border border-stone-855 py-4 flex flex-col justify-between">
-                <div className="flex justify-between items-start text-xs text-stone-400 font-medium font-mono">
+              <div className={`mach-card py-4 flex flex-col justify-between border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
+                <div className={`flex justify-between items-start text-xs font-medium font-mono ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                   <span>FUNDAÇÃO / SALDO INICIAL</span>
                   <Sliders className="w-4 h-4 text-stone-500" />
                 </div>
@@ -1647,21 +1718,25 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                 </div>
               </div>
 
-              <div className="mach-card bg-stone-900 border border-stone-855 py-4 flex flex-col justify-between">
-                <div className="flex justify-between items-start text-xs text-stone-400 font-medium font-mono">
+              <div className={`mach-card py-4 flex flex-col justify-between border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
+                <div className={`flex justify-between items-start text-xs font-medium font-mono ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                   <span>CAPTAÇÕES (RECEITAS)</span>
                   <ArrowUpRight className="w-4 h-4 text-emerald-500 animate-pulse" />
                 </div>
                 <div className="mt-3">
-                  <p className="text-lg font-mono font-extrabold text-emerald-450">
+                  <p className={`text-lg font-mono font-extrabold ${isDark ? 'text-emerald-450' : 'text-emerald-600'}`}>
                     {globalSummaryTotals.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                   <p className="text-[10px] text-stone-500 font-mono mt-0.5">Parcerias e cotas institucionais</p>
                 </div>
               </div>
 
-              <div className="mach-card bg-stone-900 border border-stone-855 py-4 flex flex-col justify-between">
-                <div className="flex justify-between items-start text-xs text-stone-400 font-medium font-mono">
+              <div className={`mach-card py-4 flex flex-col justify-between border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
+                <div className={`flex justify-between items-start text-xs font-medium font-mono ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                   <span>DESEMBOLSOS (DESPESAS)</span>
                   <ArrowDownLeft className="w-4 h-4 text-[#DC2626]" />
                 </div>
@@ -1673,8 +1748,10 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                 </div>
               </div>
 
-              <div className={`mach-card bg-stone-900 py-4 flex flex-col justify-between border-l-2 ${globalSummaryTotals.finalBalance >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
-                <div className="flex justify-between items-start text-xs text-stone-400 font-medium font-mono">
+              <div className={`mach-card py-4 flex flex-col justify-between border-l-2 ${
+                isDark ? 'bg-stone-900 border-y-stone-850 border-r-stone-850' : 'bg-white border-y-stone-200 border-r-stone-200 shadow-sm'
+              } ${globalSummaryTotals.finalBalance >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}>
+                <div className={`flex justify-between items-start text-xs font-medium font-mono ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                   <span>SALDO FINANCEIRO REAL</span>
                   <TrendingUp className="w-4 h-4 text-emerald-500" />
                 </div>
@@ -1689,15 +1766,21 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             </div>
 
             {/* Recharts Bar Chart Breakdown */}
-            <div className="bg-stone-900 border border-stone-850 p-5 rounded-lg">
-              <div className="flex justify-between items-center mb-4 select-none pb-2 border-b border-stone-850">
+            <div className={`p-5 rounded-lg border ${
+              isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+            }`}>
+              <div className={`flex justify-between items-center mb-4 select-none pb-2 border-b ${
+                isDark ? 'border-stone-850' : 'border-stone-200'
+              }`}>
                 <div>
-                  <h3 className="text-xs font-bold uppercase text-stone-200 tracking-wider">
+                  <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-stone-200' : 'text-stone-850'}`}>
                     Análise Mensal de Receita vs Despesa (F1 in Schools Plan)
                   </h3>
-                  <p className="text-[10px] text-stone-500 font-sans mt-0.5">Distribuição do livro-caixa sobre a Linha do Tempo de engenharia</p>
+                  <p className={`text-[10px] font-sans mt-0.5 ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>Distribuição do livro-caixa sobre a Linha do Tempo de engenharia</p>
                 </div>
-                <span className="text-[9px] font-mono bg-stone-950 text-indigo-400 border border-stone-800 px-2 py-0.5 rounded">
+                <span className={`text-[9px] font-mono border px-2 py-0.5 rounded ${
+                  isDark ? 'bg-stone-950 border-stone-800 text-indigo-400' : 'bg-stone-50 border-stone-200 text-indigo-600'
+                }`}>
                   Recharts Render Engine
                 </span>
               </div>
@@ -1708,11 +1791,16 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     data={barChartData}
                     margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
-                    <XAxis dataKey="monthName" stroke="#737373" fontSize={11} />
-                    <YAxis stroke="#737373" fontSize={11} tickFormatter={(v) => `R$${v}`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#262626" : "#e5e5e5"} />
+                    <XAxis dataKey="monthName" stroke={isDark ? "#737373" : "#525252"} fontSize={11} />
+                    <YAxis stroke={isDark ? "#737373" : "#525252"} fontSize={11} tickFormatter={(v) => `R$${v}`} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#171717', borderColor: '#404040', color: '#fff', fontSize: '11px' }}
+                      contentStyle={{ 
+                        backgroundColor: isDark ? '#171717' : '#ffffff', 
+                        borderColor: isDark ? '#404040' : '#d4d4d8', 
+                        color: isDark ? '#fff' : '#000', 
+                        fontSize: '11px' 
+                      }}
                       formatter={(v) => [`R$ ${Number(v).toLocaleString('pt-BR')}`, '']}
                     />
                     <Legend wrapperStyle={{ fontSize: '11px' }} />
@@ -1727,16 +1815,22 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Add transaction form */}
-              <div className="lg:col-span-4 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+              <div className={`p-5 rounded-lg flex flex-col justify-between border lg:col-span-4 ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
                 <div>
-                  <div className="flex items-center gap-1.5 mb-4 pb-2 border-b border-stone-850 select-none">
+                  <div className={`flex items-center gap-1.5 mb-4 pb-2 border-b select-none ${
+                    isDark ? 'border-stone-850' : 'border-stone-200'
+                  }`}>
                     <span className="w-2 h-2 rounded-full bg-red-650" />
-                    <h3 className="text-xs font-bold uppercase text-white tracking-widest">Lançar Movimentação</h3>
+                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-stone-900'}`}>Lançar Movimentação</h3>
                   </div>
 
                   <form onSubmit={handleAddCashFlowEntry} className="space-y-4">
                     <div>
-                      <label htmlFor="cf-desc" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DESIGNAÇÃO DO PAGAMENTO *</label>
+                      <label htmlFor="cf-desc" className={`text-[10px] font-mono block mb-1 font-bold ${
+                        isDark ? 'text-stone-400' : 'text-stone-605'
+                      }`}>DESIGNAÇÃO DO PAGAMENTO *</label>
                       <input 
                         id="cf-desc"
                         type="text"
@@ -1750,7 +1844,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="cf-type" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">TIPO *</label>
+                        <label htmlFor="cf-type" className={`text-[10px] font-mono block mb-1 font-bold ${
+                          isDark ? 'text-stone-400' : 'text-stone-605'
+                        }`}>TIPO *</label>
                         <select
                           id="cf-type"
                           value={cashFlowForm.type}
@@ -1763,7 +1859,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                       </div>
 
                       <div>
-                        <label htmlFor="cf-category" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">CATEGORIA</label>
+                        <label htmlFor="cf-category" className={`text-[10px] font-mono block mb-1 font-bold ${
+                          isDark ? 'text-stone-400' : 'text-stone-605'
+                        }`}>CATEGORIA</label>
                         <select
                           id="cf-category"
                           value={cashFlowForm.category}
@@ -1785,7 +1883,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="cf-amount" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">MONTANTE (R$) *</label>
+                        <label htmlFor="cf-amount" className={`text-[10px] font-mono block mb-1 font-bold ${
+                          isDark ? 'text-stone-400' : 'text-stone-605'
+                        }`}>MONTANTE (R$) *</label>
                         <input 
                           id="cf-amount"
                           type="number"
@@ -1794,12 +1894,14 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           required
                           value={cashFlowForm.amount}
                           onChange={e => setCashFlowForm({...cashFlowForm, amount: Number(e.target.value)})}
-                          className="mach-input"
+                          className="mach-input font-bold"
                         />
                       </div>
 
                       <div>
-                        <label htmlFor="cf-date" className="text-[10px] font-mono text-stone-400 block mb-1 font-bold">DATA DO FLUXO *</label>
+                        <label htmlFor="cf-date" className={`text-[10px] font-mono block mb-1 font-bold ${
+                          isDark ? 'text-stone-400' : 'text-stone-605'
+                        }`}>DATA DO FLUXO *</label>
                         <input 
                           id="cf-date"
                           type="date"
@@ -1812,15 +1914,21 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     </div>
 
                     {cashFlowForm.type === 'expense' && (
-                      <div className="p-2.5 bg-stone-950 border border-stone-850 rounded flex items-center gap-2 select-none">
+                      <div className={`p-2.5 border rounded flex items-center gap-2 select-none ${
+                        isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200'
+                      }`}>
                         <input 
                           type="checkbox"
                           id="contingencyPay"
                           checked={cashFlowForm.isContingencyFunded}
                           onChange={e => setCashFlowForm({...cashFlowForm, isContingencyFunded: e.target.checked})}
-                          className="w-4 h-4 rounded text-[#DC2626] border-stone-800 focus:ring-[#DC2626]"
+                          className={`w-4 h-4 rounded text-[#DC2626] focus:ring-[#DC2626] ${
+                            isDark ? 'border-stone-800 bg-stone-900' : 'border-stone-300 bg-white'
+                          }`}
                         />
-                        <label htmlFor="contingencyPay" className="text-[10px] text-stone-400 font-mono cursor-pointer">
+                        <label htmlFor="contingencyPay" className={`text-[10px] font-mono cursor-pointer ${
+                          isDark ? 'text-stone-400' : 'text-stone-600'
+                        }`}>
                           Debitar do Fundo de Reserva
                         </label>
                       </div>
@@ -1835,19 +1943,27 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                   </form>
                 </div>
 
-                <div className="bg-[#DC2626]/10 p-3 rounded border border-[#DC2626]/30 text-[10px] text-stone-400 font-sans leading-relaxed mt-4">
+                <div className={`p-3 rounded border text-[10px] font-sans leading-relaxed mt-4 ${
+                  isDark
+                    ? 'bg-[#DC2626]/10 border-[#DC2626]/30 text-stone-400'
+                    : 'bg-red-50/60 border-red-200 text-stone-705'
+                }`}>
                   <strong>Reconciliação Automática:</strong> Novos lançamentos entram com estado "Pendente". Utilize a aba "Conciliação Bancária" para validar os extratos quinzenais.
                 </div>
               </div>
 
               {/* Ledger Operational Table with filters */}
-              <div className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg">
+              <div className={`lg:col-span-8 p-5 rounded-lg border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
                 
                 {/* Tables filters bar */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 select-none pb-2 border-b border-stone-850">
+                <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 select-none pb-2 border-b ${
+                  isDark ? 'border-stone-850' : 'border-stone-200'
+                }`}>
                   <div>
-                    <h3 className="text-xs font-bold uppercase text-white tracking-widest">Extrato Geral / Ledger de Operações</h3>
-                    <p className="text-[10px] text-stone-500 font-mono">Modulagem e controle de fluxo real para o M1-2026</p>
+                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-stone-900'}`}>Extrato Geral / Ledger de Operações</h3>
+                    <p className={`text-[10px] font-mono ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>Modulagem e controle de fluxo real para o M1-2026</p>
                   </div>
 
                   <div className="flex flex-wrap gap-2 text-xs select-none">
@@ -1866,20 +1982,28 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         }));
                         exportToExcel(excelData, `Fluxo_De_Caixa_${activeProject.name.replace(/\s+/g, '_')}.xlsx`, 'Fluxo de Caixa');
                       }}
-                      className="bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-400 border border-emerald-900 font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer"
+                      className={`font-extrabold uppercase py-1.5 px-3 rounded flex items-center gap-1.5 transition text-[10px] cursor-pointer border ${
+                        isDark 
+                          ? 'bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-450 border-[#10B981]/30' 
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-250'
+                      }`}
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
                       Exportar Excel
                     </button>
 
                     {/* Month Filter */}
-                    <div className="flex items-center bg-stone-950 px-2 py-1 rounded border border-stone-800 text-[10px] font-mono">
+                    <div className={`flex items-center px-2 py-1 rounded border text-[10px] font-mono ${
+                      isDark ? 'bg-stone-950 border-stone-800 text-stone-400' : 'bg-stone-55 border-stone-200 text-stone-600'
+                    }`}>
                       <Filter className="w-3.5 h-3.5 text-stone-500 mr-1.5" />
-                      <span className="text-stone-455 uppercase font-bold mr-1">Mês:</span>
+                      <span className="uppercase font-bold mr-1">Mês:</span>
                       <select
                         value={cfMonthFilter}
                         onChange={e => setCfMonthFilter(e.target.value)}
-                        className="bg-transparent border-none text-white focus:outline-none"
+                        className={`bg-transparent border-none focus:outline-none font-bold ${
+                          isDark ? 'text-white bg-stone-950' : 'text-stone-800 bg-stone-55'
+                        }`}
                       >
                         <option value="todos">Todos</option>
                         {uniqueMonths.map(m => (
@@ -1889,12 +2013,16 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                     </div>
 
                     {/* Category Filter */}
-                    <div className="flex items-center bg-stone-950 px-2 py-1 rounded border border-stone-800 text-[10px] font-mono">
-                      <span className="text-stone-455 uppercase font-bold mr-1">Cat:</span>
+                    <div className={`flex items-center px-2 py-1 rounded border text-[10px] font-mono ${
+                      isDark ? 'bg-stone-950 border-stone-800 text-stone-400' : 'bg-stone-55 border-stone-200 text-stone-600'
+                    }`}>
+                      <span className="uppercase font-bold mr-1">Cat:</span>
                       <select
                         value={cfCategoryFilter}
                         onChange={e => setCfCategoryFilter(e.target.value)}
-                        className="bg-transparent border-none text-white focus:outline-none"
+                        className={`bg-transparent border-none focus:outline-none font-bold ${
+                          isDark ? 'text-white bg-stone-950' : 'text-stone-800 bg-stone-55'
+                        }`}
                       >
                         <option value="todos">Todas</option>
                         {uniqueCategories.map(cat => (
@@ -1909,7 +2037,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                 <div className="overflow-x-auto">
                   <table className="w-full text-left font-sans text-xs border-collapse">
                     <thead>
-                      <tr className="bg-stone-950 text-stone-500 font-mono text-[9px] uppercase font-bold border-b border-stone-850">
+                      <tr className={`font-mono text-[9px] uppercase font-bold border-b ${
+                        isDark ? 'bg-stone-955 text-stone-500 border-stone-850' : 'bg-stone-50 text-stone-600 border-stone-200'
+                      }`}>
                         <th className="p-3">Data</th>
                         <th className="p-3">Descrição lançamento</th>
                         <th className="p-3">Categoria</th>
@@ -1919,44 +2049,54 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                         <th className="p-3 text-center">Eliminar</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-stone-850 bg-stone-950/20">
+                    <tbody className={`divide-y ${isDark ? 'divide-stone-850 bg-stone-950/20' : 'divide-stone-200 bg-stone-50/10'}`}>
                       {filteredCashFlow.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="p-8">
-                            <div className="text-center py-8 px-4 bg-stone-950/30 border border-dashed border-stone-800 rounded flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                            <div className={`text-center py-8 px-4 border border-dashed rounded flex flex-col items-center justify-center space-y-2 animate-fade-in ${
+                              isDark ? 'bg-stone-950/30 border-stone-800' : 'bg-stone-50 border-stone-200'
+                            }`}>
                               <ArrowUpRight className="w-8 h-8 text-stone-700/60" />
-                              <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Nenhuma Transação no Livro-Caixa</p>
+                              <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>Nenhuma Transação no Livro-Caixa</p>
                               <p className="text-[10px] text-stone-500 max-w-xs">Cadastre receitas e despesas no formulário lateral para monitorar o fluxo de caixa do M1-2026.</p>
                             </div>
                           </td>
                         </tr>
                       ) : (
                         filteredCashFlow.map(cf => (
-                          <tr key={cf.id} className="hover:bg-stone-900/40 transition">
-                            <td className="p-3 font-mono text-stone-500 text-[11px]">{cf.date.split('-').reverse().join('/')}</td>
+                          <tr key={cf.id} className={`transition ${isDark ? 'hover:bg-stone-900/40 border-stone-850' : 'hover:bg-stone-105 border-stone-150'}`}>
+                            <td className={`p-3 font-mono text-[11px] ${isDark ? 'text-stone-500' : 'text-stone-600'}`}>{cf.date.split('-').reverse().join('/')}</td>
                             <td className="p-3">
                               <div>
-                                <p className="font-bold text-stone-200">{cf.description}</p>
+                                <p className={`font-bold ${isDark ? 'text-stone-200' : 'text-stone-850'}`}>{cf.description}</p>
                                 {cf.isContingencyFunded && (
-                                  <span className="inline-flex items-center gap-1 text-[8px] bg-red-950/30 text-amber-400 border border-red-900/40 px-1 py-0.1 font-mono rounded font-bold uppercase mt-1">
+                                  <span className={`inline-flex items-center gap-1 text-[8px] border px-1 py-0.1 font-mono rounded font-bold uppercase mt-1 ${
+                                    isDark ? 'bg-red-955/30 text-amber-400 border-red-900/45' : 'bg-amber-50 text-amber-700 border-amber-200'
+                                  }`}>
                                     🛡️ Fundo Contingência
                                   </span>
                                 )}
                               </div>
                             </td>
                             <td className="p-3">
-                              <span className="bg-stone-850 border border-stone-800 text-[10px] text-stone-400 px-1.5 py-0.5 rounded font-mono">
+                              <span className={`border text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                isDark ? 'bg-stone-850 border-stone-800 text-stone-400' : 'bg-stone-100 border-stone-200 text-stone-700 font-semibold'
+                              }`}>
                                 {cf.category}
                               </span>
                             </td>
                             <td className="p-3 text-center">
                               {cf.type === 'revenue' ? (
-                                <span className="bg-emerald-950/40 border border-emerald-900/40 text-emerald-400 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase">Entrada</span>
+                                <span className={`border text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                                  isDark ? 'bg-emerald-955/40 border-emerald-900/45 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                }`}>Entrada</span>
                               ) : (
-                                <span className="bg-red-950/40 border border-red-900/40 text-[#DC2626] text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase font-bold">Saída</span>
+                                <span className={`border text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                                  isDark ? 'bg-red-955/45 border-red-900/45 text-[#DC2626]' : 'bg-red-50 border-red-200 text-[#DC2626] font-bold'
+                                }`}>Saída</span>
                               )}
                             </td>
-                            <td className={`p-3 text-right font-mono font-bold ${cf.type === 'revenue' ? 'text-emerald-500' : 'text-stone-300'}`}>
+                            <td className={`p-3 text-right font-mono font-bold ${cf.type === 'revenue' ? 'text-emerald-500' : isDark ? 'text-stone-300' : 'text-stone-705'}`}>
                               {cf.type === 'revenue' ? '+' : '-'}{cf.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </td>
                             <td className="p-3 text-center select-none">
@@ -1964,8 +2104,8 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                                 onClick={() => toggleReconciliation(cf.id)}
                                 className={`px-2 py-0.5 font-mono text-[9px] font-bold rounded border transition-all cursor-pointer ${
                                   cf.isReconciled
-                                    ? 'bg-emerald-950/20 text-emerald-450 border-emerald-900/40'
-                                    : 'bg-amber-950/20 text-amber-450 border-amber-900/40'
+                                    ? isDark ? 'bg-emerald-955/20 text-emerald-450 border-emerald-900/45' : 'bg-emerald-50 text-emerald-700 border-emerald-250'
+                                    : isDark ? 'bg-amber-955/20 text-amber-450 border-amber-900/45' : 'bg-amber-50 text-amber-700 border-amber-250'
                                 }`}
                               >
                                 {cf.isReconciled ? 'Reconciliado' : 'Pendente'}
@@ -1974,7 +2114,9 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                             <td className="p-3 text-center select-none">
                               <button
                                 onClick={() => deleteCashFlowEntry(cf.id)}
-                                className="text-stone-600 hover:text-red-500 p-1 cursor-pointer"
+                                className={`p-1 cursor-pointer transition ${
+                                  isDark ? 'text-stone-600 hover:text-red-500' : 'text-stone-400 hover:text-red-600'
+                                }`}
                                 title="Deletar lançamento"
                               >
                                 ✕
@@ -1994,7 +2136,6 @@ export default function Finance({ activeProject, activeUser, memberships, users,
           </div>
           )
         )}
-
         {/* TAB 5: CONTINGENCY RESERVE */}
         {activeSubTab === 'contingency' && (
           <div className="space-y-6">
@@ -2003,16 +2144,22 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
               {/* Configuration Range Panel */}
-              <div className="bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+              <div className={`p-5 rounded-lg flex flex-col justify-between border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
                 <div>
-                  <div className="flex items-center gap-1.5 mb-4 pb-2 border-b border-stone-850 select-none">
+                  <div className={`flex items-center gap-1.5 mb-4 pb-2 border-b select-none ${
+                    isDark ? 'border-stone-850' : 'border-stone-200'
+                  }`}>
                     <Percent className="w-4.5 h-4.5 text-[#DC2626]" />
-                    <h3 className="text-xs font-bold uppercase text-white tracking-widest">Alíquota de Proteção</h3>
+                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-stone-900'}`}>Alíquota de Proteção</h3>
                   </div>
                   
                   <div className="space-y-5">
                     <div>
-                      <label className="text-[10px] font-mono text-stone-400 block mb-1.5 font-bold uppercase">PERCENTUAL DA RESERVA (%)</label>
+                      <label className={`text-[10px] font-mono block mb-1.5 font-bold uppercase ${
+                        isDark ? 'text-stone-400' : 'text-stone-600'
+                      }`}>PERCENTUAL DA RESERVA (%)</label>
                       <div className="flex items-center gap-4">
                         <input 
                           type="range"
@@ -2021,90 +2168,113 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           step="1"
                           value={contingencyPercentage}
                           onChange={e => saveContingencyPercent(Number(e.target.value))}
-                          className="w-full accent-[#DC2626] bg-stone-950 h-1.5 rounded-lg appearance-none cursor-pointer"
+                          className={`w-full accent-[#DC2626] h-1.5 rounded-lg appearance-none cursor-pointer ${
+                            isDark ? 'bg-stone-950' : 'bg-stone-200'
+                          }`}
                         />
-                        <span className="font-mono text-lg font-bold text-white shrink-0 bg-stone-950 border border-stone-800 px-2 py-0.5 rounded">
+                        <span className={`font-mono text-lg font-bold shrink-0 border px-2 py-0.5 rounded ${
+                          isDark ? 'bg-stone-950 border-stone-800 text-white' : 'bg-stone-50 border-stone-200 text-stone-900 font-bold'
+                        }`}>
                           {contingencyPercentage}%
                         </span>
                       </div>
-                      <p className="text-[10px] text-stone-500 font-sans leading-relaxed mt-2.5">
+                      <p className={`text-[10px] leading-relaxed mt-2.5 ${isDark ? 'text-stone-550' : 'text-stone-500'}`}>
                         Margem preventiva para imprevistos do protótipo mecânico exigida pelo regulamento de conformidade.
                       </p>
                     </div>
 
-                    <div className="bg-stone-950 p-3.5 border border-stone-850 rounded text-xs space-y-2 select-text">
-                      <p className="text-[9px] font-mono text-stone-500 font-bold uppercase">Premissas de Cálculo</p>
-                      <p className="text-stone-300 leading-relaxed font-sans text-[11px]">
-                        O montante preventivo é calculado aplicando a alíquota de <strong className="text-[#DC2626]">{contingencyPercentage}%</strong> sobre o <strong>Valor Total de Patrocínios Capatados</strong> da equipe.
+                    <div className={`p-3.5 border rounded text-xs space-y-2 select-text ${
+                      isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200 shadow-inner'
+                    }`}>
+                      <p className={`text-[9px] font-mono font-bold uppercase ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>Premissas de Cálculo</p>
+                      <p className={`leading-relaxed font-sans text-[11px] ${isDark ? 'text-stone-300' : 'text-stone-700'}`}>
+                        O montante preventivo é calculado aplicando a alíquota de <strong className="text-[#DC2626]">{contingencyPercentage}%</strong> sobre o <strong>Valor Total de Patrocínios Captados</strong> da equipe.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-stone-950 text-stone-500 border border-stone-850 p-2.5 rounded text-[9px] font-mono leading-relaxed mt-5">
+                <div className={`p-2.5 rounded text-[9px] font-mono leading-relaxed mt-5 border ${
+                  isDark ? 'bg-stone-950 text-stone-500 border-stone-850' : 'bg-stone-105/60 text-stone-600 border-stone-200'
+                }`}>
                   🛡️ Recomenda-se estipular entre 10% e 15% para suportar correções de usinagem e re-impressão em blocos de ABS.
                 </div>
               </div>
 
               {/* Quantitative balance sheet card */}
-              <div className="md:col-span-2 bg-stone-900 border border-stone-850 p-6 rounded-lg flex flex-col justify-between">
+              <div className={`md:col-span-2 p-6 rounded-lg flex flex-col justify-between border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
                 <div>
-                  <div className="flex justify-between items-center mb-6 pb-2 border-b border-stone-850 select-none">
+                  <div className={`flex justify-between items-center mb-6 pb-2 border-b select-none ${
+                    isDark ? 'border-stone-850' : 'border-stone-200'
+                  }`}>
                     <div>
-                      <h3 className="text-xs font-bold uppercase text-white tracking-widest">Resumo de Contingência & Disponibilidade</h3>
-                      <p className="text-[10px] text-stone-400 mt-0.5">Visão do Fundo de Segurança para Imprevistos Mecânicos</p>
+                      <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-stone-900'}`}>Resumo de Contingência & Disponibilidade</h3>
+                      <p className={`text-[10px] mt-0.5 ${isDark ? 'text-stone-400' : 'text-stone-500'}`}>Visão do Fundo de Segurança para Imprevistos Mecânicos</p>
                     </div>
-                    <span className="text-[9px] font-mono bg-stone-950 border border-stone-800 text-stone-400 px-3 py-1 rounded">
+                    <span className={`text-[9px] font-mono border px-3 py-1 rounded ${
+                      isDark ? 'bg-stone-950 border-stone-800 text-stone-400' : 'bg-stone-50 border-stone-200 text-stone-600 font-bold'
+                    }`}>
                       REGULAMENTO F1
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" id="contingency-summary-blocks">
                     
-                    <div className="bg-stone-950 p-4 border border-stone-850 rounded">
-                      <span className="text-[9px] font-mono text-stone-505 block font-bold uppercase">PATROCÍNIOS RECEBIDOS</span>
+                    <div className={`p-4 border rounded ${
+                      isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200 shadow-sm'
+                    }`}>
+                      <span className={`text-[9px] font-mono block font-bold uppercase ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>PATROCÍNIOS RECEBIDOS</span>
                       <span className="font-mono font-extrabold text-[#DC2626] text-md mt-1 block">
                         {totalSponsoredAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
-                      <span className="text-[9px] text-stone-600 font-sans block mt-1">Soma de receitas marcadas Patrocínio</span>
+                      <span className={`text-[9px] font-sans block mt-1 ${isDark ? 'text-stone-600' : 'text-stone-500'}`}>Soma de receitas marcadas Patrocínio</span>
                     </div>
 
-                    <div className="bg-stone-950 p-4 border border-stone-840 rounded border-l-2 border-l-[#DC2626]">
-                      <span className="text-[9px] font-mono text-stone-505 block font-bold uppercase">VALOR RESERVA CALCULADO</span>
-                      <span className="font-mono font-extrabold text-white text-md mt-1 block">
+                    <div className={`p-4 border rounded border-l-2 border-l-[#DC2626] ${
+                      isDark ? 'bg-stone-955 border-y-stone-850 border-r-stone-850' : 'bg-stone-50 border-y-stone-200 border-r-stone-200 shadow-sm'
+                    }`}>
+                      <span className={`text-[9px] font-mono block font-bold uppercase ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>VALOR RESERVA CALCULADO</span>
+                      <span className={`font-mono font-extrabold text-md mt-1 block ${isDark ? 'text-white' : 'text-stone-900'}`}>
                         {calculatedReserveAmount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
-                      <span className="text-[9px] text-stone-500 font-sans block mt-1">{contingencyPercentage}% do montante captado</span>
+                      <span className={`text-[9px] font-sans block mt-1 ${isDark ? 'text-stone-550' : 'text-stone-500'}`}>{contingencyPercentage}% do montante captado</span>
                     </div>
 
-                    <div className="bg-stone-950 p-4 border border-stone-850 rounded">
-                      <span className="text-[9px] font-mono text-stone-505 block font-bold uppercase">MONTANTE JÁ UTILIZADO</span>
+                    <div className={`p-4 border rounded ${
+                      isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200 shadow-sm'
+                    }`}>
+                      <span className={`text-[9px] font-mono block font-bold uppercase ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>MONTANTE JÁ UTILIZADO</span>
                       <span className="font-mono font-extrabold text-amber-500 text-md mt-1 block">
                         {contingencyAmountUsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </span>
-                      <span className="text-[9px] text-stone-600 font-sans block mt-1">Débitos usando fundo de reserva</span>
+                      <span className={`text-[9px] font-sans block mt-1 ${isDark ? 'text-stone-600' : 'text-stone-500'}`}>Débitos usando fundo de reserva</span>
                     </div>
 
                   </div>
 
                   {/* Available final balance card */}
-                  <div className="mt-6 bg-stone-950 p-5 border border-stone-850 rounded flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <div className={`mt-6 p-5 border rounded flex flex-col sm:flex-row justify-between items-center gap-4 ${
+                    isDark ? 'bg-stone-955 border-stone-850' : 'bg-stone-50 border-stone-200 shadow-inner'
+                  }`}>
                     <div className="space-y-1">
-                      <p className="text-xs font-bold uppercase tracking-wider font-mono text-stone-405">Saldo de Fundo Disponível para Estornos</p>
-                      <p className="text-[11px] text-stone-500">Saldo residual que pode ser canalizado sob validação do docente orientador.</p>
+                      <p className={`text-xs font-bold uppercase tracking-wider font-mono ${isDark ? 'text-stone-400' : 'text-stone-700'}`}>Saldo de Fundo Disponível para Estornos</p>
+                      <p className={`text-[11px] ${isDark ? 'text-stone-500' : 'text-stone-550'}`}>Saldo residual que pode ser canalizado sob validação do docente orientador.</p>
                     </div>
 
                     <div className="text-right">
-                      <p className={`text-xl font-mono font-black ${contingencyBalanceAvailable >= 0 ? 'text-emerald-500 animate-pulse' : 'text-red-500'}`}>
+                      <p className={`text-xl font-mono font-black ${contingencyBalanceAvailable >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                         {contingencyBalanceAvailable.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </p>
-                      <p className="text-[9px] font-mono text-stone-600 mt-1 uppercase font-bold text-stone-500">Restante Preventivo</p>
+                      <p className={`text-[9px] font-mono mt-1 uppercase font-bold ${isDark ? 'text-stone-650' : 'text-stone-500'}`}>Restante Preventivo</p>
                     </div>
                   </div>
-
                 </div>
 
-                <div className="bg-stone-950/50 p-3 rounded text-[11px] text-stone-400 leading-relaxed font-sans mt-6 border border-stone-900">
+                <div className={`p-3 rounded text-[11px] leading-relaxed font-sans mt-6 border ${
+                  isDark ? 'bg-stone-950/50 border-stone-900 text-stone-400' : 'bg-[#DC2626]/5 border-red-200 text-stone-700 font-semibold'
+                }`}>
                   ⚠️ <strong>Aviso Efetivo:</strong> Lançamentos debitados deste fundo diminuem o saldo preventivo total do projeto. Certifique-se de que cada movimento tenha anexo de aprovação do orientador.
                 </div>
               </div>
@@ -2113,7 +2283,6 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
           </div>
         )}
-
         {/* TAB 6: BANK RECONCILIATION */}
         {activeSubTab === 'reconciliation' && (
           <div className="space-y-6">
@@ -2122,59 +2291,75 @@ export default function Finance({ activeProject, activeUser, memberships, users,
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
               {/* Overdue Discrepancies Summary Panel */}
-              <div className="lg:col-span-4 bg-stone-900 border border-stone-850 p-5 rounded-lg flex flex-col justify-between">
+              <div className={`lg:col-span-4 p-5 rounded-lg flex flex-col justify-between border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
                 <div>
-                  <div className="flex items-center gap-1.5 mb-4 pb-2 border-b border-stone-850 select-none col-span-full">
+                  <div className={`flex items-center gap-1.5 mb-4 pb-2 border-b select-none col-span-full ${
+                    isDark ? 'border-stone-850' : 'border-stone-200'
+                  }`}>
                     <AlertTriangle className="w-4.5 h-4.5 text-amber-500" />
-                    <h3 className="text-xs font-bold uppercase text-white tracking-widest">Resumo de Divergências</h3>
+                    <h3 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-white' : 'text-stone-900'}`}>Resumo de Divergências</h3>
                   </div>
 
                   <div className="space-y-4">
-                    <p className="text-xs text-stone-400 leading-relaxed">
+                    <p className={`text-xs leading-relaxed ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>
                       Lançamentos que comprometem o livro físico porém ainda não possuem equivalência comprovada com o extrato bancário.
                     </p>
 
-                    <div className="bg-stone-950 p-4 border border-stone-850 rounded space-y-3.5 text-xs">
+                    <div className={`p-4 border rounded space-y-3.5 text-xs ${
+                      isDark ? 'bg-stone-950 border-stone-850' : 'bg-stone-50 border-stone-200'
+                    }`}>
                       <div>
-                        <span className="text-[9px] font-mono text-stone-500 block uppercase font-bold">Lançamentos Pendentes</span>
+                        <span className={`text-[9px] font-mono block uppercase font-bold ${isDark ? 'text-stone-500' : 'text-stone-500'}`}>Lançamentos Pendentes</span>
                         <span className="text-lg font-mono font-bold text-amber-500 block mt-0.5">
                           {unreconciledItems.length} movimentos
                         </span>
                       </div>
 
-                      <div className="border-t border-stone-900 pt-3">
-                        <span className="text-[9px] font-mono text-amber-505 block uppercase font-bold text-amber-500">⚠️ Críticos (&gt; 14 dias em aberto)</span>
+                      <div className={`border-t pt-3 ${isDark ? 'border-stone-900' : 'border-stone-200'}`}>
+                        <span className="text-[9px] font-mono block uppercase font-bold text-amber-500">⚠️ Críticos (&gt; 14 dias em aberto)</span>
                         <span className="text-lg font-mono font-black text-red-500 block mt-0.5">
                           {overdueUnreconciledList.length} em atraso
                         </span>
-                        <p className="text-[10px] text-stone-500 font-sans mt-1">Exigem justificativa urgente e envio de recibo.</p>
+                        <p className={`text-[10px] font-sans mt-1 ${isDark ? 'text-stone-500' : 'text-stone-550'}`}>Exigem justificativa urgente e envio de recibo.</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-amber-950/20 border border-amber-900/30 p-3 rounded text-[10px] text-amber-400 leading-relaxed mt-5">
+                <div className={`p-3 rounded text-[10px] leading-relaxed mt-5 border ${
+                  isDark ? 'bg-amber-950/20 border-amber-900/30 text-amber-400' : 'bg-amber-50 border-amber-250 text-amber-850'
+                }`}>
                   📌 <strong>Nota Auditoria:</strong> Itens com mais de 2 semanas sem conciliação causam desencontro no cálculo do EVM do cronograma. Resolva os comprovantes pendentes.
                 </div>
               </div>
 
               {/* Pending checklist spreadsheet */}
-              <div className="lg:col-span-8 bg-stone-900 border border-stone-850 p-5 rounded-lg">
-                <div className="flex justify-between items-center mb-4 select-none">
+              <div className={`lg:col-span-8 p-5 rounded-lg border ${
+                isDark ? 'bg-stone-900 border-stone-850' : 'bg-white border-stone-200 shadow-sm'
+              }`}>
+                <div className={`flex justify-between items-center mb-4 select-none pb-2 border-b ${
+                  isDark ? 'border-stone-850' : 'border-stone-200'
+                }`}>
                   <div>
-                    <h3 className="text-xs font-bold uppercase text-white tracking-wider">Checklist de Auditoria Quinzenal</h3>
-                    <p className="text-[10px] text-stone-450 mt-0.5">Lista de lançamentos pendentes de validação contábil</p>
+                    <h3 className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-stone-900'}`}>Checklist de Auditoria Quinzenal</h3>
+                    <p className={`text-[10px] mt-0.5 ${isDark ? 'text-stone-450' : 'text-stone-500'}`}>Lista de lançamentos pendentes de validação contábil</p>
                   </div>
-                  <span className="text-[10px] bg-stone-950 border border-stone-800 text-[#DC2626] px-3 py-1 font-mono rounded">
+                  <span className={`text-[10px] border px-3 py-1 font-mono rounded ${
+                    isDark ? 'bg-stone-950 border-stone-800 text-[#DC2626]' : 'bg-stone-50 border-stone-200 text-[#DC2626] font-bold'
+                  }`}>
                     CONCILIAÇÃO DISCENTE
                   </span>
                 </div>
 
                 <div className="space-y-3.5 max-h-[420px] overflow-y-auto pr-1">
                   {unreconciledItems.length === 0 ? (
-                    <div className="text-center py-16 bg-stone-950/20 border border-dashed border-stone-800 rounded-lg flex flex-col items-center justify-center space-y-3 w-full animate-fade-in">
+                    <div className={`text-center py-16 border border-dashed rounded-lg flex flex-col items-center justify-center space-y-3 w-full animate-fade-in ${
+                      isDark ? 'bg-stone-950/20 border-stone-800' : 'bg-stone-50 border-stone-200'
+                    }`}>
                       <CheckCircle className="w-8 h-8 text-emerald-500" />
-                      <p className="text-xs text-stone-300 font-bold uppercase tracking-wider">Espetacular! Tudo conciliado</p>
+                      <p className={`text-xs font-bold uppercase tracking-wider ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>Espetacular! Tudo conciliado</p>
                       <p className="text-[10px] text-stone-500">Nenhum lançamento pendente encontrado para reconciliar no caixa.</p>
                     </div>
                   ) : (
@@ -2186,35 +2371,47 @@ export default function Finance({ activeProject, activeUser, memberships, users,
                           key={item.id}
                           className={`p-3.5 rounded border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition ${
                             isOverdue
-                              ? 'bg-red-950/10 border-red-900/60 shadow-md shadow-red-950/5'
-                              : 'bg-stone-950 border-stone-850 hover:border-stone-800'
+                              ? isDark 
+                                ? 'bg-red-955/10 border-red-900/60 shadow-md shadow-red-955/5' 
+                                : 'bg-red-50 border-red-200 shadow-sm'
+                              : isDark 
+                                ? 'bg-stone-950 border-stone-850 hover:border-stone-800' 
+                                : 'bg-stone-50/50 border-stone-200 hover:border-stone-300 hover:bg-stone-50'
                           }`}
                         >
                           <div className="space-y-1.5 max-w-md">
                             <div className="flex flex-wrap items-center gap-2">
                               {isOverdue && (
-                                <span className="text-[8px] bg-red-950/45 border border-red-900/70 text-red-500 font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse flex items-center gap-1">
+                                <span className={`text-[8px] border font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse flex items-center gap-1 ${
+                                  isDark ? 'bg-red-955/45 border-red-900/70 text-red-500' : 'bg-red-100 border-red-200 text-red-700'
+                                }`}>
                                   ⚠️ Crítico &gt; 14 Dias
                                 </span>
                               )}
-                              <span className="text-[10px] bg-stone-900 border border-stone-800 text-stone-400 px-2 py-0.2 rounded font-mono">
+                              <span className={`text-[10px] border px-2 py-0.2 rounded font-mono ${
+                                isDark ? 'bg-stone-900 border-stone-800 text-stone-400' : 'bg-stone-200/60 border-stone-300/80 text-stone-700 font-semibold'
+                              }`}>
                                 {item.category}
                               </span>
-                              <span className="text-stone-500 font-mono text-[10px]">
+                              <span className={`font-mono text-[10px] ${isDark ? 'text-stone-500' : 'text-stone-550'}`}>
                                 {item.date.split('-').reverse().join('/')}
                               </span>
                             </div>
 
-                            <p className="text-xs font-bold text-stone-150 leading-snug">{item.description}</p>
+                            <p className={`text-xs font-bold leading-snug ${isDark ? 'text-stone-150' : 'text-stone-850'}`}>{item.description}</p>
                             
-                            <p className="text-[10px] text-stone-500 font-mono">
-                              Valor: <span className="font-bold text-stone-300">{item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                            <p className={`text-[10px] font-mono ${isDark ? 'text-stone-500' : 'text-stone-605'}`}>
+                              Valor: <span className={`font-bold ${isDark ? 'text-stone-300' : 'text-stone-800'}`}>{item.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                             </p>
                           </div>
 
                           <button
                             onClick={() => toggleReconciliation(item.id)}
-                            className="bg-emerald-950 text-emerald-400 hover:bg-emerald-900/40 border border-emerald-900/60 px-3/5 py-1.5 rounded font-mono text-[10px] font-bold uppercase cursor-pointer transition shrink-0 inline-flex items-center gap-1.5 self-end sm:self-center"
+                            className={`px-3.5 py-1.5 rounded font-mono text-[10px] font-bold uppercase cursor-pointer transition shrink-0 inline-flex items-center gap-1.5 self-end sm:self-center border ${
+                              isDark 
+                                ? 'bg-emerald-950 text-emerald-450 hover:bg-emerald-900/40 border-emerald-900/60' 
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-105 border-emerald-250'
+                            }`}
                           >
                             <CheckSquare className="w-3.5 h-3.5" /> Marcar como conferido
                           </button>
@@ -2228,6 +2425,13 @@ export default function Finance({ activeProject, activeUser, memberships, users,
 
             </div>
 
+          </div>
+        )}
+
+        {/* TAB 7: EVM ANALYSIS */}
+        {activeSubTab === 'evm' && (
+          <div className="animate-fade-in">
+            <EvmDashboard activeProject={activeProject} isDark={isDark} />
           </div>
         )}
 

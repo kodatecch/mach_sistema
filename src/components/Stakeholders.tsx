@@ -44,6 +44,8 @@ interface StakeholdersProps {
   activeUser: User;
   permissions?: any;
   config?: OrgConfig;
+  isFullscreen?: boolean;
+  setIsFullscreen?: (val: boolean) => void;
 }
 
 // Initial defaults for fallback seeding if storage is empty
@@ -177,6 +179,7 @@ A diretora Cláudia confirmou a liberação da verba de compras de fibra de carb
 };
 
 export default function Stakeholders({ activeProject, activeUser, permissions, config }: StakeholdersProps) {
+  const isDark = config?.theme === 'dark';
   // Active internal sub-views on Stakeholders: 'map' | 'comm_matrix' | 'comms_log'
   const enabledTabs = useMemo(() => {
     const tabs: ('map' | 'comm_matrix' | 'comms_log')[] = [];
@@ -210,6 +213,10 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('all');
   const [selectedQuadrantFilter, setSelectedQuadrantFilter] = useState<string | null>(null);
+
+  // Mendelow matrix dual modes and role filters
+  const [mendelowViewMode, setMendelowViewMode] = useState<'grupos' | 'pessoas'>('pessoas');
+  const [mendelowRoleFilter, setMendelowRoleFilter] = useState('all');
 
   // Form toggles
   const [showAddStkForm, setShowAddStkForm] = useState(false);
@@ -436,6 +443,7 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
 
   // Immediate drag update or scatter klik handler
   const handleScatterPointClick = (data: any) => {
+    if (mendelowViewMode !== 'pessoas') return;
     if (data && data.payload) {
       const stk = stakeholders.find(s => s.id === data.payload.id);
       if (stk) {
@@ -632,17 +640,66 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
     });
   }, [categorizedStakeholders, searchQuery, selectedRoleFilter, selectedQuadrantFilter]);
 
-  // Scatter data mapper
-  const scatterPlotData = useMemo(() => {
-    return categorizedStakeholders.map(stk => ({
+  // Scatter data mappers
+  const groupScatterPlotData = useMemo(() => {
+    const groups: Record<string, { xSum: number; ySum: number; count: number; name: string }> = {};
+    categorizedStakeholders.forEach(stk => {
+      const roleKey = stk.role;
+      if (!groups[roleKey]) {
+        groups[roleKey] = {
+          xSum: 0,
+          ySum: 0,
+          count: 0,
+          name: translateRole(roleKey)
+        };
+      }
+      groups[roleKey].xSum += stk.interestLevel;
+      groups[roleKey].ySum += stk.powerLevel;
+      groups[roleKey].count += 1;
+    });
+
+    return Object.keys(groups).map(roleKey => {
+      const g = groups[roleKey];
+      const avgX = Math.round((g.xSum / g.count) * 10) / 10;
+      const avgY = Math.round((g.ySum / g.count) * 10) / 10;
+      
+      let quad: 'key_players' | 'keep_satisfied' | 'keep_informed' | 'monitor' = 'monitor';
+      if (avgX >= 3 && avgY >= 3) quad = 'key_players';
+      else if (avgX < 3 && avgY >= 3) quad = 'keep_satisfied';
+      else if (avgX >= 3 && avgY < 3) quad = 'keep_informed';
+      
+      return {
+        x: avgX,
+        y: avgY,
+        name: g.name,
+        role: `Grupo com ${g.count} integrante(s)`,
+        quad,
+        id: roleKey,
+        count: g.count
+      };
+    });
+  }, [categorizedStakeholders]);
+
+  const peopleScatterPlotData = useMemo(() => {
+    const mapped = categorizedStakeholders.map(stk => ({
       x: stk.interestLevel,
       y: stk.powerLevel,
       name: stk.name,
-      role: stk.role,
+      role: translateRole(stk.role),
       quad: stk.quadrant,
       id: stk.id
     }));
-  }, [categorizedStakeholders]);
+
+    if (mendelowRoleFilter === 'all') return mapped;
+    return mapped.filter(stk => {
+      const dbStk = stakeholders.find(s => s.id === stk.id);
+      return dbStk && dbStk.role === mendelowRoleFilter;
+    });
+  }, [categorizedStakeholders, stakeholders, mendelowRoleFilter]);
+
+  const currentScatterData = useMemo(() => {
+    return mendelowViewMode === 'grupos' ? groupScatterPlotData : peopleScatterPlotData;
+  }, [mendelowViewMode, groupScatterPlotData, peopleScatterPlotData]);
 
   // Count helper
   const mendelowCounts = useMemo(() => {
@@ -1095,13 +1152,53 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
             
             {/* 2A. INTERACTIVE MENDELOW SCATTER SPLOT */}
             <div className="bg-stone-900 border border-stone-850 p-5 rounded space-y-4 shadow-sm select-none">
-              <div className="flex justify-between items-center select-none">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 select-none pb-2 border-b border-stone-850">
                 <div>
-                  <h3 className="text-sm font-display font-black uppercase text-white tracking-wider flex items-center gap-1.5 p-0">
+                  <h3 className="text-xs font-display font-black uppercase text-white tracking-wider flex items-center gap-1.5 p-0">
                     <Map className="w-4 h-4 text-rose-505" />
-                    Gráfico Scatter Matriz de Mendelow (Matriz de Qualificação)
+                    Gráfico Scatter Matriz de Mendelow (Qualificação)
                   </h3>
-                  <p className="text-[11px] text-stone-400 mt-0.5">As coordenadas atualizam instantaneamente ao arrastar ou editar os levels do parceiro no formulário.</p>
+                  <p className="text-[10px] text-stone-400 mt-0.5">As coordenadas atualizam instantaneamente com os níveis dos parceiros.</p>
+                </div>
+
+                {/* View toggles & filter */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex bg-stone-955 p-0.5 border border-stone-800 rounded text-[10px] select-none">
+                    <button
+                      type="button"
+                      onClick={() => setMendelowViewMode('grupos')}
+                      className={`px-2.5 py-1 rounded font-bold uppercase transition-colors cursor-pointer ${
+                        mendelowViewMode === 'grupos' ? 'bg-[#DC2626] text-white font-bold' : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Geral (Grupos)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMendelowViewMode('pessoas')}
+                      className={`px-2.5 py-1 rounded font-bold uppercase transition-colors cursor-pointer ${
+                        mendelowViewMode === 'pessoas' ? 'bg-[#DC2626] text-white font-bold' : 'text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      Pessoas
+                    </button>
+                  </div>
+
+                  {mendelowViewMode === 'pessoas' && (
+                    <select
+                      value={mendelowRoleFilter}
+                      onChange={(e) => setMendelowRoleFilter(e.target.value)}
+                      className="bg-stone-955 text-stone-300 border border-stone-805 rounded px-2 py-1 text-[10px] font-mono focus:outline-none focus:border-red-500 cursor-pointer"
+                    >
+                      <option value="all">Todas as Pessoas</option>
+                      <option value="sponsor">Patrocinadores</option>
+                      <option value="mentor">Mentores</option>
+                      <option value="judge">Conselheiros / Juízes</option>
+                      <option value="school">Representantes Univ.</option>
+                      <option value="collaborator">Equipe Interna</option>
+                      <option value="follower">Apoiadores</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -1177,11 +1274,11 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
 
                     <Scatter 
                       name="Stakeholders" 
-                      data={scatterPlotData} 
+                      data={currentScatterData} 
                       onClick={handleScatterPointClick}
                       className="cursor-pointer"
                     >
-                      {scatterPlotData.map((entry, index) => {
+                      {currentScatterData.map((entry, index) => {
                         let color = '#78716c'; // Monitor
                         if (entry.quad === 'key_players') color = '#dc2626'; // Red
                         else if (entry.quad === 'keep_satisfied') color = '#fb923c'; // Orange
@@ -1193,8 +1290,12 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                   </ScatterChart>
                 </ResponsiveContainer>
               </div>
-              <div className="text-[10px] text-stone-500 text-center font-mono select-text bg-stone-950/20 py-1 border border-stone-900 rounded">
-                💡 <b>Interativo:</b> Clique sobre qualquer ponto (Scatter Dot) acima para iniciar a edição do stakeholder correspondente!
+              <div className="text-[10px] text-stone-500 text-center font-mono select-text bg-stone-955/20 py-1 border border-stone-900 rounded">
+                {mendelowViewMode === 'pessoas' ? (
+                  <span>💡 <b>Interativo:</b> Clique sobre qualquer ponto (Scatter Dot) acima para iniciar a edição do stakeholder correspondente!</span>
+                ) : (
+                  <span>📊 <b>Consolidado:</b> Pontos representam a média de Poder/Interesse para cada grupo de stakeholders.</span>
+                )}
               </div>
             </div>
 
@@ -1687,25 +1788,39 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                   return (
                     <div 
                       key={log.id}
-                      className="p-4 bg-stone-900 border border-stone-850 hover:border-stone-800 rounded space-y-3 transition-colors text-xs select-text"
+                      className={`p-4 rounded border space-y-3 transition-colors text-xs select-text ${
+                        isDark 
+                          ? 'bg-stone-900 border-stone-850 hover:border-stone-800' 
+                          : 'bg-white border-stone-200 hover:border-stone-300 shadow-sm'
+                      }`}
                     >
                       
                       {/* LOG HEADER */}
-                      <div className="flex justify-between items-start border-b border-stone-950 pb-2 flex-wrap gap-2">
+                      <div className={`flex justify-between items-start border-b pb-2 flex-wrap gap-2 ${
+                        isDark ? 'border-stone-955' : 'border-stone-150'
+                      }`}>
                         <div className="space-y-0.5">
-                          <h4 className="font-bold text-white uppercase tracking-wider flex items-center gap-1 text-[11px]">
+                          <h4 className={`font-bold uppercase tracking-wider flex items-center gap-1 text-[11px] ${
+                            isDark ? 'text-white' : 'text-stone-900'
+                          }`}>
                             {log.channel}
                           </h4>
-                          <div className="flex items-center gap-1.5 text-[9.5px] font-mono text-stone-400 select-none">
+                          <div className={`flex items-center gap-1.5 text-[9.5px] font-mono select-none ${
+                            isDark ? 'text-stone-400' : 'text-stone-500'
+                          }`}>
                             <span>Data: <b className="text-rose-500">{log.date}</b></span>
                             <span>•</span>
-                            <span>Participante: <b className="text-stone-200">{stk ? stk.name : 'Excluído'} ({stk ? stk.organization : 'N/A'})</b></span>
+                            <span>Participante: <b className={isDark ? 'text-stone-200' : 'text-stone-800'}>{stk ? stk.name : 'Excluído'} ({stk ? stk.organization : 'N/A'})</b></span>
                           </div>
                         </div>
 
                         <button
                           onClick={() => handleDeleteLog(log.id)}
-                          className="bg-stone-950 hover:bg-red-950/30 text-stone-500 hover:text-red-500 p-1 rounded border border-stone-850 cursor-pointer"
+                          className={`p-1 rounded border cursor-pointer ${
+                            isDark
+                              ? 'bg-stone-955 hover:bg-red-950/30 border-stone-850 text-stone-550 hover:text-red-500'
+                              : 'bg-stone-50 hover:bg-red-50 border-stone-200 text-stone-400 hover:text-red-600'
+                          }`}
                           title="Remover ata"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1713,19 +1828,31 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                       </div>
 
                       {/* LOG SUMMARY CONTENT */}
-                      <p className="text-stone-300 font-serif leading-relaxed text-[11.5px] whitespace-pre-line bg-stone-950/35 p-3 rounded border border-stone-950">
+                      <p className={`font-serif leading-relaxed text-[11.5px] whitespace-pre-line p-3 rounded border ${
+                        isDark
+                          ? 'text-stone-300 bg-stone-955 border-stone-950'
+                          : 'text-stone-800 bg-stone-50 border-stone-150'
+                      }`}>
                         {log.summary}
                       </p>
 
                       {/* INLINE AUDIO ATTACHMENT PLAYER IF EXISTS */}
                       {log.audioAttachmentUrl && (
-                        <div className="p-2.5 bg-stone-950 border border-stone-850 rounded-lg flex items-center gap-3 animate-fade-in">
-                          <div className="w-8 h-8 rounded-full bg-red-955 border border-red-900 flex items-center justify-center shrink-0">
+                        <div className={`p-2.5 rounded-lg flex items-center gap-3 animate-fade-in border ${
+                          isDark 
+                            ? 'bg-stone-955 border-stone-850' 
+                            : 'bg-stone-50 border-stone-150'
+                        }`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                            isDark 
+                              ? 'bg-red-955 border border-red-900' 
+                              : 'bg-red-50 border border-red-200'
+                          }`}>
                             <FileAudio className="w-4 h-4 text-rose-500 shrink-0" />
                           </div>
                           
                           <div className="flex-grow min-w-0 select-text font-mono text-[9.5px]">
-                            <p className="text-stone-400 font-semibold truncate">Anexo de Áudio da Conversa</p>
+                            <p className={`font-semibold truncate ${isDark ? 'text-stone-400' : 'text-stone-600'}`}>Anexo de Áudio da Conversa</p>
                             <audio 
                               controls 
                               src={log.audioAttachmentUrl} 
@@ -1744,7 +1871,11 @@ export default function Stakeholders({ activeProject, activeUser, permissions, c
                           {log.keyPoints.map((pt, idx) => (
                             <span 
                               key={idx}
-                              className="text-[9px] bg-red-950/20 border border-red-905/30 text-rose-400 font-mono font-bold px-1.5 py-0.2 rounded"
+                              className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                                isDark
+                                  ? 'bg-red-955/20 border border-red-905/30 text-rose-455'
+                                  : 'bg-red-50 border border-red-200/50 text-[#DC2626]'
+                              }`}
                             >
                               {pt}
                             </span>

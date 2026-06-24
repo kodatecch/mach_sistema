@@ -18,6 +18,8 @@ import {
   Trash2,
   X,
   Database,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -148,6 +150,16 @@ export default function Workspace({
   }, [activeUser, activeProject, currentTab, tabPermissionsMap, memberships]);
   const [showSettings, setShowSettings] = useState(false);
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Helper date function for auto-progression
+  function calculateDaysDifference(date1: string, date2: string): number {
+    const d1 = new Date(date1 + 'T00:00:00');
+    const d2 = new Date(date2 + 'T00:00:00');
+    const utc1 = Date.UTC(d1.getFullYear(), d1.getMonth(), d1.getDate());
+    const utc2 = Date.UTC(d2.getFullYear(), d2.getMonth(), d2.getDate());
+    return Math.floor((utc1 - utc2) / (1000 * 60 * 60 * 24));
+  }
 
   // Dashboard Data and Simulation Timeline states
   const [currentDate, setCurrentDate] = useState<string>('2026-06-20');
@@ -160,12 +172,34 @@ export default function Workspace({
     if (!activeProject) return;
     
     // Tasks
-    const localTasks = localStorage.getItem(`tasks_${activeProject.id}`);
+    const storageKey = `tasks_${activeProject.id}`;
+    const localTasks = localStorage.getItem(storageKey);
+    let loadedTasks: any[] = [];
     if (localTasks) {
-      try { setTasks(JSON.parse(localTasks)); } catch(e) {}
-    } else {
-      setTasks([]);
+      try { loadedTasks = JSON.parse(localTasks); } catch(e) {}
     }
+
+    // Auto-progression logic: if task is in 'todo' status, and simulated date is at least 2 days past startDate
+    let changed = false;
+    if (currentDate) {
+      loadedTasks = loadedTasks.map(t => {
+        if (t.status === 'todo' && t.startDate) {
+          const diff = calculateDaysDifference(currentDate, t.startDate);
+          if (diff >= 2) {
+            changed = true;
+            return { ...t, status: 'in_progress' };
+          }
+        }
+        return t;
+      });
+    }
+
+    if (changed) {
+      localStorage.setItem(storageKey, JSON.stringify(loadedTasks));
+      queryClient.invalidateQueries({ queryKey: ['tasks', activeProject.id] });
+    }
+
+    setTasks(loadedTasks);
 
     // Cash flow transactions
     const localTrans = localStorage.getItem(`stem_cash_flow_${activeProject.id}`);
@@ -182,7 +216,7 @@ export default function Workspace({
     } else {
       setRisks([]);
     }
-  }, [activeProject, currentTab]);
+  }, [activeProject, currentTab, currentDate, queryClient]);
 
   // Database Connection Status Checker
   const [dbStatus, setDbStatus] = useState<string>('Verificando Banco...');
@@ -259,56 +293,157 @@ export default function Workspace({
 
   return (
     <div className={`min-h-screen ${bg} ${isDark ? 'text-stone-100' : 'text-stone-900'} flex flex-col font-sans antialiased`}>
+      {/* Floating Exit Button in Fullscreen Mode */}
+      {isFullscreen && (
+        <button
+          onClick={() => setIsFullscreen(false)}
+          className="fixed top-4 right-4 z-50 p-2 py-1 px-3 bg-red-600 hover:bg-red-750 text-white font-mono text-[10px] uppercase font-black tracking-widest rounded-full shadow-2xl flex items-center gap-1.5 transition-all select-none hover:scale-105 cursor-pointer border border-red-500/20"
+          style={{ color: '#ffffff' }}
+          title="Sair da Tela Cheia"
+        >
+          <Minimize2 className="w-3.5 h-3.5" />
+          <span>Sair da Tela Cheia</span>
+        </button>
+      )}
+
       {/* ── Header ── */}
-      <header className={`${cardBg} border-b px-6 py-3 flex justify-between items-center sticky top-0 z-40 shadow-sm select-none`}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 accent-bg rounded-lg flex items-center justify-center font-black text-base italic text-white tracking-tight cursor-pointer shadow-lg">
-            M
-          </div>
-          <div>
-            <h1 className={`text-sm font-display font-black tracking-tight ${textPrimary}`}>
-              {config.orgName || 'Mach Control'}
-            </h1>
-            <p className={`text-[10px] font-mono uppercase tracking-widest ${textMuted}`}>
-              Gestão de Projetos
-            </p>
-          </div>
-        </div>
+      {!isFullscreen && (
+        <header className={`${cardBg} border-b px-4 py-2 flex justify-between items-center sticky top-0 z-40 shadow-sm select-none gap-4 flex-wrap lg:flex-nowrap`}>
+          <div className="flex items-center gap-4 shrink-0">
+            <div className="w-9 h-9 accent-bg rounded-lg flex items-center justify-center font-black text-base italic text-white tracking-tight cursor-pointer shadow-lg">
+              M
+            </div>
+            <div>
+              <h1 className={`text-xs font-display font-black tracking-tight ${textPrimary} leading-none`}>
+                {config.orgName || 'Mach Control'}
+              </h1>
+              <p className={`text-[9px] font-mono uppercase tracking-widest ${textMuted} mt-0.5`}>
+                Gestão de Projetos
+              </p>
+            </div>
+            
+            {/* Seletor de Projetos no Cabeçalho */}
+            <div className="relative ml-2">
+              <button
+                onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                className={`text-left px-3 py-1.5 rounded-lg border text-[11px] font-bold flex items-center justify-between gap-1.5 transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-stone-950 border-stone-850 text-stone-200 hover:border-stone-700'
+                    : 'bg-stone-50 border-stone-200 text-stone-900 hover:border-stone-300'
+                }`}
+              >
+                <span className="truncate max-w-[120px]">{activeProject?.name || 'Selecionar...'}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
+              </button>
 
-        <div className="flex items-center gap-3">
-          {/* Settings */}
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className={`p-2 rounded-lg border transition-colors cursor-pointer ${
-              isDark
-                ? 'border-stone-800 text-stone-400 hover:text-white hover:border-stone-700'
-                : 'border-stone-200 text-stone-500 hover:text-stone-900 hover:border-stone-300'
-            }`}
-            title="Configurações"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-
-          {/* User info */}
-          <div className={`hidden md:flex flex-col text-right font-mono text-[10px] ${textMuted} border-r pr-3 ${isDark ? 'border-stone-800' : 'border-stone-200'}`}>
-            <span className="uppercase">{isAdmin ? 'Gestor' : 'Membro'}</span>
-            <span className={`font-bold ${textPrimary}`}>{activeUser.name}</span>
+              <AnimatePresence>
+                {showProjectDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className={`absolute z-50 top-full mt-1 w-48 rounded-lg border shadow-xl overflow-hidden ${
+                      isDark ? 'bg-stone-900 border-stone-800' : 'bg-white border-stone-200'
+                    }`}
+                  >
+                    {availableProjects.map(p => (
+                      <button
+                        key={p.id}
+                        onClick={() => {
+                          setActiveProject(p);
+                          setShowProjectDropdown(false);
+                          setCurrentTab('dashboard');
+                        }}
+                        className={`w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer ${
+                          p.id === activeProject?.id
+                            ? 'accent-bg text-white font-bold'
+                            : isDark
+                            ? 'text-stone-305 hover:bg-stone-808'
+                            : 'text-stone-707 hover:bg-stone-50'
+                        }`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
-          {/* Logout */}
-          <button
-            onClick={onLogout}
-            className={`p-2 border rounded-lg transition-colors cursor-pointer ${
-              isDark
-                ? 'border-stone-800 text-stone-400 hover:text-red-500 hover:border-red-600/50'
-                : 'border-stone-200 text-stone-500 hover:text-red-500 hover:border-red-300'
-            }`}
-            title="Sair"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
+          {/* Abas no Cabeçalho (Horizontal e Responsivo) */}
+          <nav className="flex items-center gap-1 overflow-x-auto max-w-full no-scrollbar py-1 px-2 select-none flex-grow justify-center">
+            {ALL_TABS.filter(tab => hasTabPermission(tab.key)).map(tab => {
+              const Icon = tab.icon;
+              const isActive = currentTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setCurrentTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'accent-bg text-white font-bold shadow-sm'
+                      : isDark
+                      ? 'text-stone-400 hover:text-white hover:bg-stone-800/60'
+                      : 'text-stone-500 hover:text-stone-900 hover:bg-stone-100'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Botões de Configurações, User e Logout */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Botão de Tela Cheia */}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                isDark
+                  ? 'border-stone-800 text-stone-400 hover:text-white hover:border-stone-700 bg-stone-900'
+                  : 'border-stone-200 text-stone-500 hover:text-stone-900 hover:border-stone-300 bg-white'
+              }`}
+              title="Tela Cheia"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Settings */}
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                isDark
+                  ? 'border-stone-800 text-stone-400 hover:text-white hover:border-stone-700 bg-stone-900'
+                  : 'border-stone-200 text-stone-500 hover:text-stone-900 hover:border-stone-300 bg-white'
+              }`}
+              title="Configurações"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+
+            {/* User info */}
+            <div className={`hidden md:flex flex-col text-right font-mono text-[9px] ${textMuted} border-r pr-2 ${isDark ? 'border-stone-800' : 'border-stone-200'}`}>
+              <span className="uppercase">{isAdmin ? 'Gestor' : 'Membro'}</span>
+              <span className={`font-bold ${textPrimary}`}>{activeUser.name}</span>
+            </div>
+
+            {/* Logout */}
+            <button
+              onClick={onLogout}
+              className={`p-1.5 border rounded-lg transition-colors cursor-pointer ${
+                isDark
+                  ? 'border-stone-800 text-stone-400 hover:text-red-505 hover:border-red-650/50 bg-stone-900'
+                  : 'border-stone-200 text-stone-500 hover:text-red-500 hover:border-red-300 bg-white'
+              }`}
+              title="Sair"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </header>
+      )}
 
       {/* ── Settings Panel ── */}
       <AnimatePresence>
@@ -822,87 +957,7 @@ export default function Workspace({
       </AnimatePresence>
 
       {/* ── Body ── */}
-      <div className="flex-grow flex flex-col lg:flex-row">
-        {/* ── Sidebar ── */}
-        <aside className={`w-full lg:w-56 ${sidebarBg} border-b lg:border-b-0 lg:border-r p-4 flex flex-col gap-4 select-none`}>
-          {/* Project selector */}
-          <div className="space-y-2">
-            <p className={`text-[10px] font-mono font-bold uppercase tracking-wider ${textMuted}`}>
-              Projeto
-            </p>
-            <div className="relative">
-              <button
-                onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-                className={`w-full text-left px-3 py-2.5 rounded-lg border text-xs font-medium flex items-center justify-between gap-2 transition-all cursor-pointer ${
-                  isDark
-                    ? 'bg-stone-950 border-stone-800 text-white hover:border-stone-700'
-                    : 'bg-stone-50 border-stone-200 text-stone-900 hover:border-stone-300'
-                }`}
-              >
-                <span className="truncate">{activeProject?.name || 'Selecionar...'}</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showProjectDropdown ? 'rotate-180' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showProjectDropdown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -5 }}
-                    className={`absolute z-30 top-full mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-                      isDark ? 'bg-stone-900 border-stone-800' : 'bg-white border-stone-200'
-                    }`}
-                  >
-                    {availableProjects.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => {
-                          setActiveProject(p);
-                          setShowProjectDropdown(false);
-                          setCurrentTab('dashboard');
-                        }}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors cursor-pointer ${
-                          p.id === activeProject?.id
-                            ? 'accent-bg text-white font-bold'
-                            : isDark
-                            ? 'text-stone-300 hover:bg-stone-800'
-                            : 'text-stone-700 hover:bg-stone-50'
-                        }`}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Nav tabs */}
-          <nav className="flex flex-col gap-0.5">
-            {ALL_TABS.filter(tab => hasTabPermission(tab.key)).map(tab => {
-              const Icon = tab.icon;
-              const isActive = currentTab === tab.key;
-              return (
-                <button
-                  key={tab.key}
-                  onClick={() => setCurrentTab(tab.key)}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                    isActive
-                      ? 'accent-bg text-white font-bold shadow-sm'
-                      : isDark
-                      ? 'text-stone-400 hover:text-white hover:bg-stone-800/60'
-                      : 'text-stone-500 hover:text-stone-900 hover:bg-stone-100'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </aside>
-
+      <div className="flex-grow flex flex-col">
         {/* ── Main content ── */}
         <main className="flex-1 overflow-y-auto">
           <AnimatePresence mode="wait">
@@ -937,6 +992,8 @@ export default function Workspace({
                       risks={risks}
                       currentDate={currentDate}
                       setCurrentDate={setCurrentDate}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
                     />
                   </motion.div>
                 )}
@@ -958,6 +1015,8 @@ export default function Workspace({
                       permissions={permissions}
                       config={config}
                       currentDate={currentDate}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
                     />
                   </motion.div>
                 )}
@@ -978,6 +1037,8 @@ export default function Workspace({
                       users={users}
                       permissions={permissions}
                       config={config}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
                     />
                   </motion.div>
                 )}
@@ -996,6 +1057,8 @@ export default function Workspace({
                       activeUser={activeUser}
                       permissions={permissions}
                       config={config}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
                     />
                   </motion.div>
                 )}
@@ -1014,6 +1077,8 @@ export default function Workspace({
                       activeUser={activeUser}
                       permissions={permissions}
                       config={config}
+                      isFullscreen={isFullscreen}
+                      setIsFullscreen={setIsFullscreen}
                     />
                   </motion.div>
                 )}
